@@ -23,7 +23,7 @@ export const AuthService = {
                 // 1. Check Master Admin Credentials
                 if (username.toLowerCase() === MASTER_ADMIN.username.toLowerCase() && password === MASTER_ADMIN.password) {
                     clearTimeout(timeoutGuard);
-                    localStorage.setItem(USER_KEY, JSON.stringify(MASTER_ADMIN));
+                    sessionStorage.setItem(USER_KEY, JSON.stringify(MASTER_ADMIN));
                     this.redirectBasedOnRole(MASTER_ADMIN.role);
                     resolve(true);
                     return;
@@ -61,7 +61,7 @@ export const AuthService = {
                         };
                         
                         clearTimeout(timeoutGuard);
-                        localStorage.setItem(USER_KEY, JSON.stringify(sessionData));
+                        sessionStorage.setItem(USER_KEY, JSON.stringify(sessionData));
                         this.redirectBasedOnRole(foundUser.role);
                         resolve(true);
                         return;
@@ -80,19 +80,20 @@ export const AuthService = {
     },
 
     logout() {
-        localStorage.removeItem(USER_KEY);
-        window.location.href = 'index.html';
+        sessionStorage.removeItem(USER_KEY);
+        localStorage.removeItem(USER_KEY); // Clean up legacy keys
+        window.location.replace('index.html');
     },
 
     getCurrentUser() {
-        const userData = localStorage.getItem(USER_KEY);
+        const userData = sessionStorage.getItem(USER_KEY);
         return userData ? JSON.parse(userData) : null;
     },
 
     requireRole(allowedRoles) {
         const user = this.getCurrentUser();
         if (!user) {
-            window.location.href = 'index.html';
+            window.location.replace('index.html');
             return null;
         }
 
@@ -108,16 +109,16 @@ export const AuthService = {
     redirectBasedOnRole(role) {
         switch(role) {
             case 'ADMIN':
-                window.location.href = 'admin.html';
+                window.location.replace('admin.html');
                 break;
             case 'PACKAGING':
-                window.location.href = 'packer.html';
+                window.location.replace('packer.html');
                 break;
             case 'WAREHOUSE':
-                window.location.href = 'warehouse.html';
+                window.location.replace('warehouse.html');
                 break;
             default:
-                window.location.href = 'index.html';
+                window.location.replace('index.html');
         }
     }
 };
