@@ -296,18 +296,20 @@
         const workerUsername = (currentUser.username || '').trim().toLowerCase();
         let currentBatch = null;
 
-        // 2. Fetch Assigned Batch
+        // 2. Fetch Assigned Batch & Live Orders (Two-Way Sync)
         const batchRef = ref(db, `artifacts/korean-beautys-dispatch/batches/${workerUsername}`);
-        onValue(batchRef, (snapshot) => {
-            const batch = snapshot.val();
-            currentBatch = batch;
-            
+        const ordersRef = ref(db, `artifacts/korean-beautys-dispatch/orders`);
+        
+        let allLiveOrders = {};
+
+        function updatePackerUI() {
+            const batch = currentBatch;
             const printBtn = document.getElementById('printBatchBtn');
 
-            if (batch && batch.orderIds && batch.orderIds.length > 0) {
-                // Update UI Counters
-                const total = batch.orderIds.length;
-                const shipped = (batch.orders || []).filter(o => o.status === 'Shipped').length;
+            if (batch && batch.orders && batch.orders.length > 0) {
+                // Update UI Counters dynamically
+                const total = batch.orders.length;
+                const shipped = batch.orders.filter(o => o.status === 'Shipped').length;
                 const pending = total - shipped;
 
                 document.getElementById('statTotal').textContent = total;
@@ -321,7 +323,7 @@
                     : "w-full flex items-center justify-center bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 px-4 rounded-xl shadow-lg transition-all text-sm";
                 printBtn.innerHTML = batch.printed ? "✓ تم طباعة الدفعة مسبقاً" : `<i data-lucide="printer" class="w-5 h-5 ml-2"></i> طباعة البوالص (Single-Print)`;
             } else {
-                // Reset to 0 when no batch is assigned
+                // Reset to 0 when no batch is assigned or batch was wiped
                 document.getElementById('statTotal').textContent = 0;
                 document.getElementById('statCompleted').textContent = 0;
                 document.getElementById('statPending').textContent = 0;
@@ -331,7 +333,30 @@
             }
             lucide.createIcons();
             if (typeof renderPackerOrders === 'function') {
-                renderPackerOrders(document.getElementById('packerSearchInput').value);
+                renderPackerOrders(document.getElementById('packerSearchInput') ? document.getElementById('packerSearchInput').value : '');
+            }
+        }
+
+        onValue(batchRef, (snapshot) => {
+            currentBatch = snapshot.val();
+            // Merge with live orders if available
+            if (currentBatch && currentBatch.orders && Object.keys(allLiveOrders).length > 0) {
+                currentBatch.orders = currentBatch.orders.map(o => {
+                    const liveOrder = allLiveOrders[`WAYBILL_${o.trackingNumber}`] || allLiveOrders[`WAYBILL_${o.orderId}`];
+                    return liveOrder ? { ...o, ...liveOrder } : o;
+                });
+            }
+            updatePackerUI();
+        });
+
+        onValue(ordersRef, (snapshot) => {
+            allLiveOrders = snapshot.val() || {};
+            if (currentBatch && currentBatch.orders) {
+                currentBatch.orders = currentBatch.orders.map(o => {
+                    const liveOrder = allLiveOrders[`WAYBILL_${o.trackingNumber}`] || allLiveOrders[`WAYBILL_${o.orderId}`];
+                    return liveOrder ? { ...o, ...liveOrder } : o;
+                });
+                updatePackerUI();
             }
         });
 

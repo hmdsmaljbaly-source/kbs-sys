@@ -719,6 +719,9 @@
                     updates[`artifacts/korean-beautys-dispatch/orders/${k}`] = null; // delete from active
                 });
                 
+                // Real-Time Sync: Clear all active worker batches so terminals reset to 0
+                updates[`artifacts/korean-beautys-dispatch/batches`] = null;
+
                 await update(ref(db), updates);
                 showToast(`تم أرشفة ${shippedOrders.length} أوردر مشحون بنجاح`);
             } catch(err) {
@@ -739,6 +742,9 @@
                     updates[`artifacts/korean-beautys-dispatch/orders/${k}`] = null;
                 });
                 
+                // Real-Time Sync: Clear all active worker batches so terminals reset to 0
+                updates[`artifacts/korean-beautys-dispatch/batches`] = null;
+
                 await update(ref(db), updates);
                 showToast(`تم تصفير ونقل ${orders.length} أوردر إلى الأرشيف`);
             } catch(err) {
