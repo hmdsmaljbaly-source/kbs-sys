@@ -104,62 +104,9 @@ export const ScannerEngine = {
         if (!trackingNumber) return;
 
         try {
-            // 1. Fetch order from Firebase by tracking number. 
-            // Note: If Firebase is structured by order key, we might need to query it.
-            // For this design, let's assume we query the orders node where trackingNumber equals the barcode.
-            const dbRef = ref(db);
-            const snapshot = await get(child(dbRef, `orders`));
-            
-            if (!snapshot.exists()) {
-                this.triggerError();
-                return;
-            }
-
-            const orders = snapshot.val();
-            let foundOrder = null;
-            let orderKey = null;
-
-            // Find order (in a production DB with many rows, this should be an indexed query)
-            for (const [key, order] of Object.entries(orders)) {
-                if (order.trackingNumber === trackingNumber || key === trackingNumber || order.orderId === trackingNumber) {
-                    foundOrder = order;
-                    orderKey = key;
-                    break;
-                }
-            }
-
-            if (!foundOrder) {
-                this.triggerError();
-                return;
-            }
-
-            // 2. LEO Check
-            if (foundOrder.isLeo) {
-                this.triggerLeoBlocked();
-                return;
-            }
-
-            // 3. Duplicate Check
-            if (foundOrder.status === 'Shipped' || foundOrder.status === 'Packed') {
-                this.triggerDuplicate();
-                return;
-            }
-
-            // 4. Valid Scan: Update Firebase
-            const user = AuthService.getCurrentUser();
-            const updates = {};
-            updates[`/orders/${orderKey}/status`] = 'Shipped';
-            updates[`/orders/${orderKey}/scannedBy`] = user ? user.username : 'Unknown';
-            updates[`/orders/${orderKey}/scanTime`] = new Date().toISOString();
-            
-            await update(ref(db), updates);
-
-            this.triggerSuccess();
-            
             if (this.onScanCallback) {
-                this.onScanCallback(foundOrder);
+                await this.onScanCallback(trackingNumber);
             }
-
         } catch (error) {
             console.error("Scan processing error:", error);
             this.triggerError();

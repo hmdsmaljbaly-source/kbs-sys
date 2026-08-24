@@ -131,58 +131,45 @@
         document.getElementById('logoutBtn').addEventListener('click', () => AuthService.logout());
 
         // State
+        const currentUser = JSON.parse(sessionStorage.getItem('kbs_user') || localStorage.getItem('kbs_user') || '{}');
+        const workerUsername = (currentUser.username || '').trim().toLowerCase();
         let currentBatch = null;
-        let batchKey = null;
-        let assignedOrders = [];
 
-        // 2. Fetch Assigned Batch and Orders
-        const batchRef = ref(db, `artifacts/korean-beautys-dispatch/batches/${user.username}`);
+        // 2. Fetch Assigned Batch
+        const batchRef = ref(db, `artifacts/korean-beautys-dispatch/batches/${workerUsername}`);
         onValue(batchRef, (snapshot) => {
-            const val = snapshot.val();
-            if (val && !val.isCompleted) {
-                batchKey = user.username;
-                currentBatch = val;
-                updatePrintButtonState();
-            } else {
-                currentBatch = null;
-                batchKey = null;
-                updatePrintButtonState();
-            }
-        });
-
-        const ordersRef = ref(db, 'artifacts/korean-beautys-dispatch/orders');
-        onValue(ordersRef, (snapshot) => {
-            const orders = snapshot.val() || {};
-            assignedOrders = Object.values(orders).filter(o => o.assignedTo === user.uid && o.batchId === batchKey);
+            const batch = snapshot.val();
+            currentBatch = batch;
             
-            updateStats();
-        });
+            const printBtn = document.getElementById('printBatchBtn');
 
-        function updateStats() {
-            const total = assignedOrders.length;
-            const completed = assignedOrders.filter(o => o.status === 'Shipped').length;
-            const pending = total - completed;
+            if (batch && batch.orderIds && batch.orderIds.length > 0) {
+                // Update UI Counters
+                const total = batch.orderIds.length;
+                const shipped = (batch.orders || []).filter(o => o.status === 'Shipped').length;
+                const pending = total - shipped;
 
-            document.getElementById('statTotal').textContent = total;
-            document.getElementById('statCompleted').textContent = completed;
-            document.getElementById('statPending').textContent = pending;
-        }
+                document.getElementById('statTotal').textContent = total;
+                document.getElementById('statCompleted').textContent = shipped;
+                document.getElementById('statPending').textContent = pending;
 
-        function updatePrintButtonState() {
-            const btn = document.getElementById('printBatchBtn');
-            if (!currentBatch) {
-                btn.disabled = true;
-                btn.innerHTML = `<i data-lucide="x-circle" class="w-5 h-5 ml-2"></i> لا يوجد دفعة مخصصة`;
-            } else if (currentBatch.isPrinted) {
-                btn.disabled = true;
-                btn.classList.replace('bg-blue-600', 'bg-green-600');
-                btn.innerHTML = `<i data-lucide="check-circle" class="w-5 h-5 ml-2"></i> تمت الطباعة (${currentBatch.printedAt})`;
+                // Activate Single-Print Button
+                printBtn.disabled = batch.printed === true;
+                printBtn.className = batch.printed 
+                    ? "w-full flex items-center justify-center bg-slate-200 text-slate-400 font-bold py-3.5 px-4 rounded-xl cursor-not-allowed text-sm"
+                    : "w-full flex items-center justify-center bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 px-4 rounded-xl shadow-lg transition-all text-sm";
+                printBtn.innerHTML = batch.printed ? "✓ تم طباعة الدفعة مسبقاً" : `<i data-lucide="printer" class="w-5 h-5 ml-2"></i> طباعة البوالص (Single-Print)`;
             } else {
-                btn.disabled = false;
-                btn.innerHTML = `<i data-lucide="printer" class="w-5 h-5 ml-2"></i> طباعة الدفعة كاملة`;
+                // Reset to 0 when no batch is assigned
+                document.getElementById('statTotal').textContent = 0;
+                document.getElementById('statCompleted').textContent = 0;
+                document.getElementById('statPending').textContent = 0;
+                
+                printBtn.disabled = true;
+                printBtn.innerHTML = `<i data-lucide="x-circle" class="w-5 h-5 ml-2"></i> لا يوجد دفعة مخصصة`;
             }
             lucide.createIcons();
-        }
+        });
 
         // 3. Print Action
         document.getElementById('printBatchBtn').addEventListener('click', async () => {
@@ -235,7 +222,7 @@
                     
                     // Lock the batch in Firebase
                     const now = new Date().toISOString();
-                    await update(ref(db, `artifacts/korean-beautys-dispatch/batches/${user.username}`), {
+                    await update(ref(db, `artifacts/korean-beautys-dispatch/batches/${workerUsername}`), {
                         printed: true,
                         printedAt: now
                     });
@@ -255,22 +242,62 @@
         });
 
         // 4. Scanner Init
-        ScannerEngine.initKeyboardScanner((order) => {
-            document.getElementById('lastScanDetails').innerHTML = `
-                <p><strong>رقم الأوردر:</strong> ${order.orderId}</p>
-                <p><strong>رقم التتبع:</strong> ${order.trackingNumber}</p>
-                <p class="text-green-600 mt-1">تم التحديث إلى Shipped بنجاح.</p>
-            `;
-        });
-        
-        // Initialize camera scanner (will request permissions)
-        ScannerEngine.initCameraScanner('reader', (order) => {
-            document.getElementById('lastScanDetails').innerHTML = `
-                <p><strong>رقم الأوردر:</strong> ${order.orderId}</p>
-                <p><strong>رقم التتبع:</strong> ${order.trackingNumber}</p>
-                <p class="text-green-600 mt-1">تم التحديث إلى Shipped بنجاح.</p>
-            `;
-        });
+        const handleScan = async (scannedText) => {
+            if (!currentBatch || !currentBatch.orders) return;
+            const trackingNumber = scannedText.trim();
+            
+            // Look up in currentBatch.orders
+            const orderIndex = currentBatch.orders.findIndex(o => o.trackingNumber === trackingNumber || o.orderId === trackingNumber);
+            
+            if (orderIndex === -1) {
+                ScannerEngine.triggerError();
+                return;
+            }
+            
+            const matchedOrder = currentBatch.orders[orderIndex];
+            
+            if (matchedOrder.isLeo) {
+                ScannerEngine.triggerLeoBlocked();
+                return;
+            }
+            
+            if (matchedOrder.status === 'Shipped' || matchedOrder.status === 'Packed') {
+                ScannerEngine.triggerDuplicate();
+                return;
+            }
+            
+            // Valid scan
+            const orderKey = `WAYBILL_${matchedOrder.trackingNumber}`;
+            const updates = {};
+            const now = new Date().toISOString();
+            
+            // Update global orders
+            updates[`artifacts/korean-beautys-dispatch/orders/${orderKey}/status`] = 'Shipped';
+            updates[`artifacts/korean-beautys-dispatch/orders/${orderKey}/scannedBy`] = workerUsername;
+            updates[`artifacts/korean-beautys-dispatch/orders/${orderKey}/scanTime`] = now;
+            
+            // Update batch orders array
+            updates[`artifacts/korean-beautys-dispatch/batches/${workerUsername}/orders/${orderIndex}/status`] = 'Shipped';
+            updates[`artifacts/korean-beautys-dispatch/batches/${workerUsername}/orders/${orderIndex}/scannedBy`] = workerUsername;
+            updates[`artifacts/korean-beautys-dispatch/batches/${workerUsername}/orders/${orderIndex}/scanTime`] = now;
+            
+            try {
+                await update(ref(db), updates);
+                ScannerEngine.triggerSuccess();
+                
+                document.getElementById('lastScanDetails').innerHTML = `
+                    <p><strong>رقم الأوردر:</strong> ${matchedOrder.orderId}</p>
+                    <p><strong>رقم التتبع:</strong> ${matchedOrder.trackingNumber}</p>
+                    <p class="text-green-600 mt-1">تم التحديث إلى Shipped بنجاح.</p>
+                `;
+            } catch (err) {
+                console.error("Firebase update failed:", err);
+                ScannerEngine.triggerError();
+            }
+        };
+
+        ScannerEngine.initKeyboardScanner(handleScan);
+        ScannerEngine.initCameraScanner('reader', handleScan);
 
     </script>
 </body>

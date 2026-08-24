@@ -636,10 +636,11 @@
                 let matchedCount = 0;
                 let updates = {};
                 const nowIso = new Date().toISOString();
-                const batchId = workerUsername; // using username as batch ID
+                const batchId = workerUsername.toLowerCase();
                 
                 let orderIds = [];
                 let waybillPdfs = [];
+                let fullOrders = [];
 
                 // Loop through uploaded PDFs
                 for (let i = 0; i < files.length; i++) {
@@ -654,7 +655,9 @@
                         
                         const base64Data = await readFileAsBase64(file);
                         
+                        
                         orderIds.push(pdfOrderId);
+                        fullOrders.push(allOrders[orderKey]);
                         waybillPdfs.push({
                             name: file.name,
                             orderId: pdfOrderId,
@@ -667,19 +670,20 @@
 
                 if (matchedCount > 0) {
                     const batchPayload = {
-                        workerUsername: workerUsername,
+                        workerUsername: workerUsername.toLowerCase(),
                         assignedTo: uid,
                         assignedAt: nowIso,
                         printed: false,
-                        totalOrders: matchedCount,
+                        totalCount: matchedCount,
                         completedOrders: 0,
                         isCompleted: false,
                         orderIds: orderIds,
+                        orders: fullOrders,
                         waybillPdfs: waybillPdfs
                     };
                     
                     // Update batch metadata with Base64 payload
-                    await set(ref(db, `${BATCHES_PATH}/${workerUsername}`), batchPayload);
+                    await set(ref(db, `${BATCHES_PATH}/${workerUsername.toLowerCase()}`), batchPayload);
                     // Commit order updates
                     await update(ref(db), updates);
                     showToast(`تم مطابقة وتعيين ${matchedCount} بوليصة وتحويلها لعامل التغليف.`);
