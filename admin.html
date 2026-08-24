@@ -127,8 +127,12 @@
                     <option value="leo_active">حظر LEO (Active)</option>
                     <option value="leo_normal">عادي (Normal)</option>
                 </select>
+                <select id="filter-worker" class="py-2 px-3 border border-gray-200 rounded-lg text-sm font-bold text-gray-700 bg-gray-50 hover:bg-white focus:ring-2 focus:ring-blue-500 transition-all">
+                    <option value="all">كافة العمال (All Workers)</option>
+                    <option value="unassigned">غير معين (-)</option>
+                </select>
                 <div class="relative flex-1 sm:w-72">
-                    <input type="text" id="searchOrders" placeholder="ابحث برقم الأوردر، التتبع، المنتجات..." class="w-full pl-3 pr-10 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 transition-all">
+                    <input type="text" id="searchOrders" placeholder="ابحث برقم الأوردر، التتبع، المنتجات، العامل..." class="w-full pl-3 pr-10 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 transition-all">
                     <i data-lucide="search" class="w-4 h-4 text-gray-400 absolute right-3 top-2.5"></i>
                 </div>
             </div>
@@ -502,6 +506,7 @@
         const ORDERS_PATH = 'artifacts/korean-beautys-dispatch/orders';
         const BATCHES_PATH = 'artifacts/korean-beautys-dispatch/batches';
         const RETURNS_PATH = 'artifacts/korean-beautys-dispatch/returns';
+        const ARCHIVE_RETURNS_PATH = 'artifacts/korean-beautys-dispatch/archive/returns';
 
         // Global HTML triggers
         window.switchView = function(viewId) {
@@ -540,16 +545,41 @@
         let archivedOrders = {};
         let allUsers = {};
         let allReturns = {};
+        let archivedReturns = {};
 
         // 3. Listeners
         onValue(ref(db, USERS_PATH), (snapshot) => {
             allUsers = snapshot.val() || {};
             renderUsersTable();
             renderWorkerCards();
+            
+            // Populate worker filter dropdown
+            const filterWorker = document.getElementById('filter-worker');
+            if(filterWorker) {
+                const currentVal = filterWorker.value;
+                filterWorker.innerHTML = `
+                    <option value="all">كافة العمال (All Workers)</option>
+                    <option value="unassigned">غير معين (-)</option>
+                `;
+                Object.values(allUsers).forEach(u => {
+                    if(u.role === 'PACKAGING' && u.isActive !== false) {
+                        const opt = document.createElement('option');
+                        opt.value = u.username;
+                        opt.textContent = u.username;
+                        filterWorker.appendChild(opt);
+                    }
+                });
+                filterWorker.value = currentVal; // preserve selection
+            }
         });
 
         onValue(ref(db, 'artifacts/korean-beautys-dispatch/archive/orders'), (snapshot) => {
             archivedOrders = snapshot.val() || {};
+            renderReportsStatus();
+        });
+        
+        onValue(ref(db, ARCHIVE_RETURNS_PATH), (snapshot) => {
+            archivedReturns = snapshot.val() || {};
             renderReportsStatus();
         });
 
@@ -724,25 +754,35 @@
             if(!tbody) return;
             tbody.innerHTML = '';
             
-            const searchQ = document.getElementById('searchOrders') ? document.getElementById('searchOrders').value.toLowerCase() : '';
+            const searchQ = document.getElementById('searchOrders') ? document.getElementById('searchOrders').value.toLowerCase().trim() : '';
             const statusFilter = document.getElementById('filter-status') ? document.getElementById('filter-status').value : 'all';
             const leoFilter = document.getElementById('filter-leo') ? document.getElementById('filter-leo').value : 'all';
+            const workerFilter = document.getElementById('filter-worker') ? document.getElementById('filter-worker').value : 'all';
             
             const keys = Object.keys(allOrders).reverse();
             
             for (const key of keys) {
                 const order = allOrders[key];
                 
-                // Filters
+                // 1. Status filter
                 if (statusFilter !== 'all' && order.status !== statusFilter) continue;
+                
+                // 2. LEO filter
                 if (leoFilter === 'leo_active' && !order.isLeo) continue;
                 if (leoFilter === 'leo_normal' && order.isLeo) continue;
                 
+                // 3. Worker filter
+                const assigned = (order.assignedName || order.assignedTo || '').trim().toLowerCase();
+                if (workerFilter === 'unassigned' && assigned !== '' && assigned !== '-') continue;
+                if (workerFilter !== 'all' && workerFilter !== 'unassigned' && assigned !== workerFilter.toLowerCase()) continue;
+                
+                // 4. Search filter
                 if (searchQ) {
-                    const matchId = String(order.orderId).toLowerCase().includes(searchQ);
-                    const matchTracking = String(order.trackingNumber).toLowerCase().includes(searchQ);
-                    const matchProducts = String(order.products).toLowerCase().includes(searchQ);
-                    if (!matchId && !matchTracking && !matchProducts) continue;
+                    const matchId = String(order.orderId || '').toLowerCase().includes(searchQ);
+                    const matchTracking = String(order.trackingNumber || '').toLowerCase().includes(searchQ);
+                    const matchProducts = String(order.products || '').toLowerCase().includes(searchQ);
+                    const matchWorker = assigned.includes(searchQ);
+                    if (!matchId && !matchTracking && !matchProducts && !matchWorker) continue;
                 }
 
                 // Status Badge
@@ -832,7 +872,10 @@
                 });
             });
         }
-        document.getElementById('searchOrders').addEventListener('input', renderOrdersTable);
+        if(document.getElementById('searchOrders')) document.getElementById('searchOrders').addEventListener('input', renderOrdersTable);
+        if(document.getElementById('filter-status')) document.getElementById('filter-status').addEventListener('change', renderOrdersTable);
+        if(document.getElementById('filter-leo')) document.getElementById('filter-leo').addEventListener('change', renderOrdersTable);
+        if(document.getElementById('filter-worker')) document.getElementById('filter-worker').addEventListener('change', renderOrdersTable);
 
         function renderLiveMonitor() {
             const monitorDiv = document.getElementById('workersMonitor');
@@ -1078,9 +1121,11 @@
         };
 
         // 6. View 3: Reports
+        // 6. View 3: Reports
         function getFilteredReports() {
-            const combinedOrders = { ...archivedOrders, ...allOrders };
-            const ordersArray = Object.values(combinedOrders).sort((a,b) => {
+            const allOrdersArr = Object.values({ ...archivedOrders, ...allOrders }).map(o => ({...o, recordType: 'order'}));
+            const allReturnsArr = Object.values({ ...archivedReturns, ...allReturns }).map(o => ({...o, recordType: 'return'}));
+            const combinedArray = [...allOrdersArr, ...allReturnsArr].sort((a,b) => {
                 const da = new Date(a.scanTime || a.createdAt || 0);
                 const db = new Date(b.scanTime || b.createdAt || 0);
                 return db - da; // sort newest first
@@ -1095,19 +1140,25 @@
             const statusFilter = document.getElementById('reportStatusFilter') ? document.getElementById('reportStatusFilter').value : 'all';
             const searchQ = document.getElementById('reportSearch') ? document.getElementById('reportSearch').value.toLowerCase() : '';
 
-            return ordersArray.filter(o => {
+            return combinedArray.filter(o => {
                 const dateStr = o.scanTime || o.createdAt;
                 const d = dateStr ? new Date(dateStr) : null;
                 
                 const matchDate = (!start && !end) || (d && (!start || d >= start) && (!end || d <= end));
-                const matchStatus = (statusFilter === 'all') || (o.status === statusFilter);
+                
+                let matchStatus = true;
+                if (statusFilter === 'Returns') {
+                    matchStatus = o.recordType === 'return';
+                } else if (statusFilter !== 'all') {
+                    matchStatus = (o.recordType === 'order') && (o.status === statusFilter);
+                }
                 
                 let matchSearch = true;
                 if (searchQ) {
                     const matchId = String(o.orderId || '').toLowerCase().includes(searchQ);
                     const matchTracking = String(o.trackingNumber || '').toLowerCase().includes(searchQ);
-                    const matchProducts = String(o.products || '').toLowerCase().includes(searchQ);
-                    const matchWorker = String(o.assignedName || o.assignedTo || '').toLowerCase().includes(searchQ);
+                    const matchProducts = String(o.products || o.notes || '').toLowerCase().includes(searchQ);
+                    const matchWorker = String(o.assignedName || o.assignedTo || o.scannedByUsername || '').toLowerCase().includes(searchQ);
                     matchSearch = matchId || matchTracking || matchProducts || matchWorker;
                 }
                 
@@ -1132,31 +1183,41 @@
             tbody.innerHTML = '';
             
             filtered.forEach(order => {
-                // Status Badge
-                let statusHtml = `<div class="inline-flex items-center gap-2 px-3 py-1 rounded-xl bg-amber-50 text-amber-600 font-bold border border-amber-200 text-xs shadow-sm"><i data-lucide="clock" class="w-3 h-3"></i> قيد الانتظار</div>`;
-                if(order.status === 'Shipped') statusHtml = `<div class="inline-flex items-center gap-2 px-3 py-1 rounded-xl bg-green-50 text-green-700 font-bold border border-green-200 text-xs shadow-sm"><i data-lucide="check-circle" class="w-3 h-3"></i> تم الشحن</div>`;
+                // Status Badge & Products Display
+                let statusHtml = '';
+                let productsDisplay = '';
                 
-                // Products (Badges)
-                let productsDisplay = order.products || '';
-                if (order.parsedProducts && order.parsedProducts.length > 0) {
-                    productsDisplay = `<div class="flex flex-col bg-white border border-gray-200 rounded-xl p-1 shadow-sm w-full max-w-md">` + 
-                        order.parsedProducts.map(p => `
-                        <div class="flex items-center justify-between gap-4 p-2 border-b border-gray-100 last:border-0 hover:bg-gray-50 rounded-lg transition-colors group/item">
-                            <span class="bg-indigo-50 text-indigo-700 border border-indigo-100 px-2.5 py-1 rounded-lg text-xs font-bold shrink-0 shadow-sm" dir="rtl">
-                                العدد: ${p.quantity}
-                            </span>
-                            <span class="text-gray-800 font-semibold text-sm text-left product-name w-full leading-snug whitespace-normal" dir="ltr" style="font-family: 'Inter', sans-serif;">
-                                ${p.name}
-                            </span>
-                        </div>
-                    `).join('') + `</div>`;
+                if (order.recordType === 'return') {
+                    statusHtml = order.status === 'Received' 
+                        ? `<span class="bg-green-100 text-green-700 px-3 py-1 rounded-full text-xs font-bold border border-green-200"><i data-lucide="check" class="w-3 h-3 inline"></i> مرتجع مستلم</span>`
+                        : `<span class="bg-amber-50 text-amber-600 px-3 py-1 rounded-full text-xs font-bold border border-amber-200">مرتجع معلق</span>`;
+                    productsDisplay = `<span class="bg-purple-100 text-purple-700 px-2 py-1 rounded text-xs font-bold border border-purple-200 shadow-sm">طلب مرتجع</span>`;
+                } else {
+                    statusHtml = `<div class="inline-flex items-center gap-2 px-3 py-1 rounded-xl bg-amber-50 text-amber-600 font-bold border border-amber-200 text-xs shadow-sm"><i data-lucide="clock" class="w-3 h-3"></i> قيد الانتظار</div>`;
+                    if(order.status === 'Shipped') statusHtml = `<div class="inline-flex items-center gap-2 px-3 py-1 rounded-xl bg-green-50 text-green-700 font-bold border border-green-200 text-xs shadow-sm"><i data-lucide="check-circle" class="w-3 h-3"></i> تم الشحن</div>`;
+                    
+                    productsDisplay = order.products || '';
+                    if (order.parsedProducts && order.parsedProducts.length > 0) {
+                        productsDisplay = `<div class="flex flex-col bg-white border border-gray-200 rounded-xl p-1 shadow-sm w-full max-w-md">` + 
+                            order.parsedProducts.map(p => `
+                            <div class="flex items-center justify-between gap-4 p-2 border-b border-gray-100 last:border-0 hover:bg-gray-50 rounded-lg transition-colors group/item">
+                                <span class="bg-indigo-50 text-indigo-700 border border-indigo-100 px-2.5 py-1 rounded-lg text-xs font-bold shrink-0 shadow-sm" dir="rtl">
+                                    العدد: ${p.quantity}
+                                </span>
+                                <span class="text-gray-800 font-semibold text-sm text-left product-name w-full leading-snug whitespace-normal" dir="ltr" style="font-family: 'Inter', sans-serif;">
+                                    ${p.name}
+                                </span>
+                            </div>
+                        `).join('') + `</div>`;
+                    }
                 }
 
                 // Assigned Worker Badge
                 let workerHtml = `<span class="text-gray-400 font-bold">-</span>`;
-                if(order.assignedName || order.assignedTo) {
+                const assigned = order.assignedName || order.assignedTo || order.scannedByUsername || order.scannedBy;
+                if(assigned) {
                     workerHtml = `<div class="inline-flex items-center gap-1.5 bg-purple-50 text-purple-700 border border-purple-100 px-2.5 py-1 rounded-lg text-xs font-bold shadow-sm">
-                                    <i data-lucide="user" class="w-3.5 h-3.5"></i> ${order.assignedName || order.assignedTo}
+                                    <i data-lucide="user" class="w-3.5 h-3.5"></i> ${assigned}
                                   </div>`;
                 }
 
@@ -1206,10 +1267,22 @@
         if(document.getElementById('reportSearch')) document.getElementById('reportSearch').addEventListener('input', window.renderReportsStatus);
 
         document.getElementById('btnExportRepExcel').addEventListener('click', () => {
-            const data = getFilteredReports().map(o => ({
-                "رقم التتبع": o.trackingNumber, "رقم الأوردر": o.orderId, "العامل": o.assignedName, "المنتجات": o.products,
-                "الحالة": o.status, "التحصيل": o.cod, "وقت الإسكان": o.scanTime ? new Date(o.scanTime).toLocaleString('ar-EG') : '', "ملاحظات": o.notes || ''
-            }));
+            const data = getFilteredReports().map(o => {
+                let statusLabel = o.status;
+                if(o.recordType === 'return') {
+                    statusLabel = o.status === 'Received' ? 'مرتجع مستلم' : 'مرتجع معلق';
+                }
+                return {
+                    "رقم التتبع": o.trackingNumber, 
+                    "رقم الأوردر": o.orderId, 
+                    "العامل": o.assignedName || o.scannedByUsername || o.scannedBy || '', 
+                    "المنتجات": o.recordType === 'return' ? '' : o.products,
+                    "الحالة": statusLabel, 
+                    "التحصيل": o.recordType === 'return' ? '' : o.cod, 
+                    "وقت الإسكان": o.scanTime ? new Date(o.scanTime).toLocaleString('ar-EG') : '', 
+                    "ملاحظات": o.notes || ''
+                };
+            });
             if(data.length===0) return alert('لا يوجد بيانات للتصدير');
             const ws = window.XLSX.utils.json_to_sheet(data);
             const wb = window.XLSX.utils.book_new();
@@ -1601,12 +1674,22 @@
         };
 
         window.clearAllReturns = async function() {
-            if(confirm("تحذير: سيتم مسح كافة المرتجعات المرفوعة من النظام بالكامل. هل أنت متأكد؟")) {
+            if(confirm("تحذير: سيتم نقل كافة المرتجعات المرفوعة حالياً إلى الأرشيف وتصفير الشاشة. هل أنت متأكد؟")) {
                 try {
-                    await set(ref(db, RETURNS_PATH), null);
-                    showToast('تم تصفير المرتجعات بنجاح');
+                    const returns = Object.entries(allReturns);
+                    if(returns.length === 0) return alert("لا يوجد مرتجعات لتصفيرها.");
+                    
+                    const updates = {};
+                    returns.forEach(([k, r]) => {
+                        updates[`${ARCHIVE_RETURNS_PATH}/${k}`] = r;
+                        updates[`${RETURNS_PATH}/${k}`] = null;
+                    });
+                    
+                    await update(ref(db), updates);
+                    showToast(`تم تصفير ونقل ${returns.length} مرتجع إلى الأرشيف بنجاح`);
                 } catch(err) {
-                    alert('حدث خطأ');
+                    console.error(err);
+                    alert('حدث خطأ أثناء أرشفة المرتجعات');
                 }
             }
         };
