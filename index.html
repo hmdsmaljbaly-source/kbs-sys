@@ -45,7 +45,7 @@
                 </div>
             </div>
 
-            <div id="errorMessage" class="hidden text-red-500 text-sm font-medium text-center">
+            <div id="errorMessage" class="hidden mt-3 p-2.5 bg-rose-50 border border-rose-200 text-rose-700 text-xs font-bold rounded-xl text-center">
                 اسم المستخدم أو كلمة المرور غير صحيحة
             </div>
 
@@ -72,16 +72,21 @@
 
         document.getElementById('loginForm').addEventListener('submit', async (e) => {
             e.preventDefault();
-            const username = document.getElementById('username').value;
-            const password = document.getElementById('password').value;
+            const username = document.getElementById('username').value.trim();
+            const password = document.getElementById('password').value.trim();
             const errorDiv = document.getElementById('errorMessage');
             const submitBtn = e.target.querySelector('button[type="submit"]');
+
+            if (!username || !password) {
+                errorDiv.textContent = "يرجى إدخال اسم المستخدم وكلمة المرور";
+                errorDiv.classList.remove('hidden');
+                return;
+            }
 
             try {
                 errorDiv.classList.add('hidden');
                 submitBtn.disabled = true;
-                submitBtn.innerHTML = '<i data-lucide="loader-2" class="w-5 h-5 animate-spin"></i>';
-                lucide.createIcons();
+                submitBtn.innerHTML = '<div class="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mx-auto"></div>';
                 
                 await AuthService.login(username, password);
             } catch (error) {

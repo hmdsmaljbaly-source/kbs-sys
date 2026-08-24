@@ -4,62 +4,88 @@ import { ref, get, child } from "https://www.gstatic.com/firebasejs/10.8.1/fireb
 // Session storage keys
 const USER_KEY = 'kbs_user';
 
+const MASTER_ADMIN = {
+  username: "gebaly27",
+  password: "gebo777",
+  name: "Mr. Gebaly",
+  role: "ADMIN"
+};
+
 export const AuthService = {
     async login(username, password) {
-        try {
-            const dbRef = ref(db);
-            // Fetch users (Note: In a real production app with RTDB auth, this should be done securely, usually via Firebase Auth. 
-            // Following spec to use RTDB /users node for auth).
-            const snapshot = await get(child(dbRef, `users`));
-            
-            if (snapshot.exists()) {
-                const users = snapshot.val();
-                let foundUser = null;
-                let userKey = null;
+        return new Promise(async (resolve, reject) => {
+            // Safety Timeout to prevent infinite spinning
+            const timeoutGuard = setTimeout(() => {
+                reject(new Error("انتهت مهلة الاتصال، يرجى المحاولة مجدداً"));
+            }, 4000);
 
-                // Find user by username
-                for (const [key, user] of Object.entries(users)) {
-                    if (user.username === username && user.password === password) {
-                        foundUser = user;
-                        userKey = key;
-                        break;
-                    }
+            try {
+                // 1. Check Master Admin Credentials
+                if (username.toLowerCase() === MASTER_ADMIN.username.toLowerCase() && password === MASTER_ADMIN.password) {
+                    clearTimeout(timeoutGuard);
+                    localStorage.setItem(USER_KEY, JSON.stringify(MASTER_ADMIN));
+                    this.redirectBasedOnRole(MASTER_ADMIN.role);
+                    resolve(true);
+                    return;
                 }
 
-                if (foundUser) {
-                    if (!foundUser.isActive) {
-                        throw new Error("Account is deactivated.");
+                // 2. Check Firebase Users
+                const dbRef = ref(db);
+                const snapshot = await get(child(dbRef, `users`));
+                
+                if (snapshot.exists()) {
+                    const users = snapshot.val();
+                    let foundUser = null;
+                    let userKey = null;
+
+                    for (const [key, user] of Object.entries(users)) {
+                        if (user.username && user.username.toLowerCase() === username.toLowerCase() && user.password === password) {
+                            foundUser = user;
+                            userKey = key;
+                            break;
+                        }
                     }
-                    
-                    const sessionData = {
-                        uid: userKey,
-                        username: foundUser.username,
-                        name: foundUser.name,
-                        role: foundUser.role
-                    };
-                    
-                    sessionStorage.setItem(USER_KEY, JSON.stringify(sessionData));
-                    this.redirectBasedOnRole(foundUser.role);
-                    return true;
-                } else {
-                    throw new Error("Invalid username or password.");
+
+                    if (foundUser) {
+                        if (foundUser.isActive === false) {
+                            clearTimeout(timeoutGuard);
+                            reject(new Error("Account is deactivated."));
+                            return;
+                        }
+                        
+                        const sessionData = {
+                            uid: userKey,
+                            username: foundUser.username,
+                            name: foundUser.name,
+                            role: foundUser.role
+                        };
+                        
+                        clearTimeout(timeoutGuard);
+                        localStorage.setItem(USER_KEY, JSON.stringify(sessionData));
+                        this.redirectBasedOnRole(foundUser.role);
+                        resolve(true);
+                        return;
+                    }
                 }
-            } else {
-                throw new Error("No users found in database.");
+                
+                clearTimeout(timeoutGuard);
+                reject(new Error("اسم المستخدم أو كلمة المرور غير صحيحة"));
+
+            } catch (error) {
+                clearTimeout(timeoutGuard);
+                console.error("Login error:", error);
+                reject(new Error("حدث خطأ أثناء الاتصال بالسيرفر"));
             }
-        } catch (error) {
-            console.error("Login error:", error);
-            throw error;
-        }
+        });
     },
 
     logout() {
-        sessionStorage.removeItem(USER_KEY);
+        localStorage.removeItem(USER_KEY);
         window.location.href = 'index.html';
     },
 
     getCurrentUser() {
-        const userData = sessionStorage.getItem(USER_KEY);
+        const userData = localStorage.getItem(USER_KEY);
         return userData ? JSON.parse(userData) : null;
     },
 
