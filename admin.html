@@ -1423,12 +1423,21 @@
                 return;
             }
 
-            // 4. Render native HTML document for printing
-            const printWindow = window.open('', '_blank');
-            if (!printWindow) {
-                alert("يرجى السماح بالنوافذ المنبثقة (Popups) لطباعة التقرير.");
-                return;
+            // 4. Render native HTML document for printing via hidden iframe
+            let printFrame = document.getElementById('pdf-print-frame');
+            if (printFrame) {
+                printFrame.remove();
             }
+            
+            printFrame = document.createElement('iframe');
+            printFrame.id = 'pdf-print-frame';
+            printFrame.style.position = 'fixed';
+            printFrame.style.right = '0';
+            printFrame.style.bottom = '0';
+            printFrame.style.width = '0';
+            printFrame.style.height = '0';
+            printFrame.style.border = '0';
+            document.body.appendChild(printFrame);
 
             const htmlContent = `
             <!DOCTYPE html>
@@ -1522,20 +1531,20 @@
                         `).join('')}
                     </tbody>
                 </table>
-                <script>
-                    window.onload = function() {
-                        setTimeout(() => {
-                            window.print();
-                        }, 500);
-                    };
-                <\/script>
             </body>
             </html>
             `;
 
-            printWindow.document.open();
-            printWindow.document.write(htmlContent);
-            printWindow.document.close();
+            const doc = printFrame.contentWindow.document;
+            doc.open();
+            doc.write(htmlContent);
+            doc.close();
+
+            // Wait a moment for fonts to load, then print natively
+            setTimeout(() => {
+                printFrame.contentWindow.focus();
+                printFrame.contentWindow.print();
+            }, 800);
         };
 
         document.getElementById('btnExportAuditPdf').addEventListener('click', () => window.generateInternalAuditPDF('download'));
