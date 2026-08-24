@@ -587,7 +587,7 @@
                                     <label class="block text-xs font-bold text-gray-600 mb-1">رفع بوالص العامل (PDFs):</label>
                                     <input type="file" id="pdfUpload_${uid}" multiple accept=".pdf" class="block w-full text-xs text-gray-500 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:bg-purple-100 file:text-purple-700 border p-1 rounded">
                                 </div>
-                                <button onclick="handleWorkerMatchAssign('${uid}', '${u.name}')" id="btnMatch_${uid}" class="w-full bg-purple-600 text-white py-2 px-4 rounded-md text-sm hover:bg-purple-700 transition font-bold shadow-sm">
+                                <button onclick="handleWorkerMatchAssign('${uid}', '${u.name}', '${u.username}')" id="btnMatch_${uid}" class="w-full bg-purple-600 text-white py-2 px-4 rounded-md text-sm hover:bg-purple-700 transition font-bold shadow-sm">
                                     مطابقة وتعيين (Match & Assign)
                                 </button>
                                 <div class="grid grid-cols-2 gap-2 pt-2 border-t">
@@ -615,52 +615,76 @@
             BulkEngine.exportToPDF(BulkEngine.aggregateSKUs(workerOrders), `Worker_${uid}_Bulk.pdf`);
         };
 
-        window.handleWorkerMatchAssign = async function(uid, workerName) {
+        window.handleWorkerMatchAssign = async function(uid, workerName, workerUsername) {
             const input = document.getElementById(`pdfUpload_${uid}`);
             const files = input.files;
             if (files.length === 0) return alert("يرجى اختيار ملفات PDF أولاً.");
             
             const btn = document.getElementById(`btnMatch_${uid}`);
-            btn.disabled = true; btn.innerHTML = 'جاري المطابقة...';
+            btn.disabled = true; btn.innerHTML = 'جاري المطابقة وتحويل الملفات (Base64)...';
+
+            const readFileAsBase64 = (file) => {
+                return new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onload = () => resolve(reader.result.split(',')[1]);
+                    reader.onerror = reject;
+                    reader.readAsDataURL(file);
+                });
+            };
 
             try {
                 let matchedCount = 0;
                 let updates = {};
                 const nowIso = new Date().toISOString();
+                const batchId = workerUsername; // using username as batch ID
                 
-                // Create a batch specifically for this worker
-                const newBatchRef = push(ref(db, BATCHES_PATH));
-                const batchId = newBatchRef.key;
+                let orderIds = [];
+                let waybillPdfs = [];
 
                 // Loop through uploaded PDFs
                 for (let i = 0; i < files.length; i++) {
                     const file = files[i];
-                    // Extract Order ID from filename
                     const pdfOrderId = BulkEngine.extractOrderIdFromFileName(file.name);
-
-                    // Search for orderId in allOrders
-                    // Note: allOrders keys are WAYBILL_..., the orderId property holds the reference
                     const orderKey = Object.keys(allOrders).find(k => allOrders[k].orderId == pdfOrderId);
                     
                     if (orderKey) {
-                        // Order found, assign it
                         updates[`/${ORDERS_PATH}/${orderKey}/assignedTo`] = uid;
                         updates[`/${ORDERS_PATH}/${orderKey}/assignedName`] = workerName;
                         updates[`/${ORDERS_PATH}/${orderKey}/batchId`] = batchId;
-                        // Also you could theoretically upload the PDF to Firebase Storage here and save URL, 
-                        // but for now we just match logically as requested.
+                        
+                        const base64Data = await readFileAsBase64(file);
+                        
+                        orderIds.push(pdfOrderId);
+                        waybillPdfs.push({
+                            name: file.name,
+                            orderId: pdfOrderId,
+                            base64: base64Data
+                        });
+                        
                         matchedCount++;
                     }
                 }
 
                 if (matchedCount > 0) {
-                    // Update batch metadata
-                    await set(newBatchRef, { assignedTo: uid, totalOrders: matchedCount, completedOrders: 0, isPrinted: false, isCompleted: false, createdAt: nowIso });
+                    const batchPayload = {
+                        workerUsername: workerUsername,
+                        assignedTo: uid,
+                        assignedAt: nowIso,
+                        printed: false,
+                        totalOrders: matchedCount,
+                        completedOrders: 0,
+                        isCompleted: false,
+                        orderIds: orderIds,
+                        waybillPdfs: waybillPdfs
+                    };
+                    
+                    // Update batch metadata with Base64 payload
+                    await set(ref(db, `${BATCHES_PATH}/${workerUsername}`), batchPayload);
                     // Commit order updates
                     await update(ref(db), updates);
-                    showToast(`تم مطابقة وتعيين ${matchedCount} بوليصة للعامل ${workerName}`);
+                    showToast(`تم مطابقة وتعيين ${matchedCount} بوليصة وتحويلها لعامل التغليف.`);
                 } else {
-                    alert("لم يتم العثور على أي أوردر مطابق لأسماء الملفات المرفوعة في قاعدة البيانات المركزية.");
+                    alert("لم يتم العثور على أي أوردر مطابق لأسماء الملفات المرفوعة.");
                 }
 
             } catch (err) {

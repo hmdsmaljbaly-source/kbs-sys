@@ -121,7 +121,7 @@
         import { PrintEngine } from './js/print-engine.js';
         import { ScannerEngine } from './js/scanner-engine.js';
         import { db } from './js/config.js';
-        import { ref, onValue } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
+        import { ref, onValue, update } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
 
         lucide.createIcons();
 
@@ -136,15 +136,16 @@
         let assignedOrders = [];
 
         // 2. Fetch Assigned Batch and Orders
-        const batchesRef = ref(db, 'artifacts/korean-beautys-dispatch/batches');
-        onValue(batchesRef, (snapshot) => {
-            const batches = snapshot.val() || {};
-            // Find active batch for this user
-            const b = Object.entries(batches).find(([key, val]) => val.assignedTo === user.uid && !val.isCompleted);
-            
-            if (b) {
-                batchKey = b[0];
-                currentBatch = b[1];
+        const batchRef = ref(db, `artifacts/korean-beautys-dispatch/batches/${user.username}`);
+        onValue(batchRef, (snapshot) => {
+            const val = snapshot.val();
+            if (val && !val.isCompleted) {
+                batchKey = user.username;
+                currentBatch = val;
+                updatePrintButtonState();
+            } else {
+                currentBatch = null;
+                batchKey = null;
                 updatePrintButtonState();
             }
         });
@@ -185,20 +186,72 @@
 
         // 3. Print Action
         document.getElementById('printBatchBtn').addEventListener('click', async () => {
-            if (!batchKey || currentBatch.isPrinted) return;
+            if (!currentBatch || currentBatch.printed || !currentBatch.waybillPdfs) return;
             
             const btn = document.getElementById('printBatchBtn');
             const progressContainer = document.getElementById('printProgressContainer');
             const progressBar = document.getElementById('printProgressBar');
             
             progressContainer.classList.remove('hidden');
-            
-            // In a real app, assignedOrders would have PDF URLs attached to them. 
-            // For now, we mock an array of URLs or let PrintEngine handle it.
-            // Placeholder:
-            const mockPdfUrls = assignedOrders.map(o => 'mock-waybill.pdf'); // Replace with actual URLs
-            
-            await PrintEngine.printBatchWithLock(batchKey, mockPdfUrls, btn, progressBar);
+            btn.disabled = true;
+            btn.innerHTML = `<i data-lucide="loader" class="w-5 h-5 ml-2 animate-spin"></i> جاري دمج وتحضير الملفات...`;
+
+            try {
+                // Initialize a new PDFDocument
+                const mergedPdf = await PDFLib.PDFDocument.create();
+                
+                const pdfs = currentBatch.waybillPdfs;
+                let processed = 0;
+
+                for (const pdfData of pdfs) {
+                    // Decode base64 and load PDF
+                    const pdfBytes = Uint8Array.from(atob(pdfData.base64), c => c.charCodeAt(0));
+                    const pdfDoc = await PDFLib.PDFDocument.load(pdfBytes);
+                    const copiedPages = await mergedPdf.copyPages(pdfDoc, pdfDoc.getPageIndices());
+                    copiedPages.forEach((page) => mergedPdf.addPage(page));
+                    
+                    processed++;
+                    progressBar.style.width = `${Math.round((processed / pdfs.length) * 100)}%`;
+                    progressBar.innerText = `${Math.round((processed / pdfs.length) * 100)}%`;
+                }
+
+                // Serialize the merged document
+                const mergedPdfBytes = await mergedPdf.save();
+                const blob = new Blob([mergedPdfBytes], { type: 'application/pdf' });
+                const blobUrl = URL.createObjectURL(blob);
+
+                // Create hidden iframe and print
+                let printFrame = document.getElementById('printFrame');
+                if (!printFrame) {
+                    printFrame = document.createElement('iframe');
+                    printFrame.id = 'printFrame';
+                    printFrame.style.display = 'none';
+                    document.body.appendChild(printFrame);
+                }
+                
+                printFrame.src = blobUrl;
+                printFrame.onload = async () => {
+                    printFrame.contentWindow.print();
+                    
+                    // Lock the batch in Firebase
+                    const now = new Date().toISOString();
+                    await update(ref(db, `artifacts/korean-beautys-dispatch/batches/${user.username}`), {
+                        printed: true,
+                        printedAt: now
+                    });
+                    
+                    btn.classList.replace('bg-blue-600', 'bg-green-600');
+                    btn.innerHTML = `<i data-lucide="check-circle" class="w-5 h-5 ml-2"></i> تمت الطباعة بنجاح`;
+                    lucide.createIcons();
+                };
+
+            } catch (err) {
+                console.error("PDF Merging Error: ", err);
+                alert("حدث خطأ أثناء دمج وطباعة الملفات.");
+                btn.disabled = false;
+                btn.innerHTML = `<i data-lucide="printer" class="w-5 h-5 ml-2"></i> طباعة الدفعة كاملة`;
+                lucide.createIcons();
+            }
         });
 
         // 4. Scanner Init
