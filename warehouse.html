@@ -101,7 +101,7 @@
         let aggregatedList = [];
 
         // 2. Fetch Orders & Populate Filter
-        const ordersRef = ref(db, 'orders');
+        const ordersRef = ref(db, 'artifacts/korean-beautys-dispatch/orders');
         onValue(ordersRef, (snapshot) => {
             const data = snapshot.val() || {};
             allOrders = Object.values(data);

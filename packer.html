@@ -136,7 +136,7 @@
         let assignedOrders = [];
 
         // 2. Fetch Assigned Batch and Orders
-        const batchesRef = ref(db, 'batches');
+        const batchesRef = ref(db, 'artifacts/korean-beautys-dispatch/batches');
         onValue(batchesRef, (snapshot) => {
             const batches = snapshot.val() || {};
             // Find active batch for this user
@@ -149,7 +149,7 @@
             }
         });
 
-        const ordersRef = ref(db, 'orders');
+        const ordersRef = ref(db, 'artifacts/korean-beautys-dispatch/orders');
         onValue(ordersRef, (snapshot) => {
             const orders = snapshot.val() || {};
             assignedOrders = Object.values(orders).filter(o => o.assignedTo === user.uid && o.batchId === batchKey);
