@@ -7,52 +7,65 @@ export const BulkEngine = {
     /**
      * Parses a raw description string into itemized SKU objects
      * Handles: "Product Name x 3" and "[Bundle] Item A + Item B x 2"
-     * @param {string} description 
-     * @returns {Array} Array of { name, quantity, condition }
+     * @param {string} descString 
+     * @returns {Array} Array of { name, qty } (Note: quantity is returned as qty)
      */
-    parseDescriptionItems(description) {
-        if (!description) return [];
-        let items = [];
-        const conditionRegex = /\[(.*?)\]/g;
-        let conditions = [];
-        let match;
-        
-        // Extract conditions like [Damage Box]
-        let cleanDesc = description;
-        while ((match = conditionRegex.exec(description)) !== null) {
-            const conditionStr = match[1].trim().toLowerCase();
-            if (conditionStr !== 'bundle') {
-                conditions.push(`[${match[1]}]`);
+    parseDescriptionItems(descString) {
+        if (!descString) return [];
+        const lines = String(descString).split(/\r?\n/);
+        const result = [];
+
+        const processProductName = (rawName, qty) => {
+            const isBundle = /^\s*\[.*?\]/.test(rawName);
+            let cleanName = rawName.replace(/^\s*\[.*?\]\s*/, '');
+            
+            if (isBundle) {
+                let parts = cleanName.split(/\s+\+\s+/);
+                parts.forEach(part => {
+                    let finalName = part.replace(/^[-_\s]+/, '').trim();
+                    if (finalName) result.push({ name: finalName, quantity: qty });
+                });
+            } else {
+                let finalName = cleanName.replace(/^[-_\s]+/, '').trim();
+                if (finalName) result.push({ name: finalName, quantity: qty });
             }
-            cleanDesc = cleanDesc.replace(match[0], '');
-        }
-        const condition = conditions.join(' ');
-        
-        // Split by + for bundles or / for multi-items if needed
-        // Assuming Shopify format sometimes uses ' + ' for bundles
-        const rawItems = cleanDesc.split('+').map(i => i.trim()).filter(i => i.length > 0);
-        
-        for (let rawItem of rawItems) {
-            let name = rawItem;
-            let quantity = 1;
-            
-            // Match trailing x 2, x3, * 2, etc.
-            const qtyRegex = /(?:x|\*)\s*(\d+)$/i;
-            const qtyMatch = name.match(qtyRegex);
-            
-            if (qtyMatch) {
-                quantity = parseInt(qtyMatch[1], 10);
-                name = name.replace(qtyRegex, '').trim();
+        };
+
+        lines.forEach(line => {
+            line = line.trim();
+            if (!line) return;
+            const regex = /(.*?)\s*x\s*(\d+)/gi;
+            let match;
+            let lastIndex = 0;
+            let foundAny = false;
+
+            while ((match = regex.exec(line)) !== null) {
+                foundAny = true;
+                processProductName(match[1], parseInt(match[2], 10));
+                lastIndex = regex.lastIndex;
             }
-            
-            items.push({
-                name: name,
-                quantity: quantity,
-                condition: condition
-            });
-        }
-        
-        return items;
+
+            if (foundAny) {
+                if (lastIndex < line.length) {
+                    let remaining = line.substring(lastIndex).trim();
+                    if (remaining) processProductName(remaining, 1);
+                }
+            } else {
+                processProductName(line, 1);
+            }
+        });
+        return result;
+    },
+
+    /**
+     * Extract only digits from filename
+     * e.g., "123728 ب.pdf" -> "123728"
+     * @param {string} fileName 
+     * @returns {string} 
+     */
+    extractOrderIdFromFileName(fileName) {
+        const match = fileName.replace(/\.pdf$/i, '').match(/\d+/g);
+        return match ? match.join('') : '';
     },
 
     /**

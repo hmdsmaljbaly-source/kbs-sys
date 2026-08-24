@@ -78,11 +78,28 @@
         
         <!-- View 1: Orders Management -->
         <section id="view-orders" class="view-section active">
-            <div class="flex justify-between items-center mb-6">
-                <h2 class="text-2xl font-bold text-gray-800">إدارة الأوردرات</h2>
-                <div class="relative w-64">
-                    <input type="text" id="searchOrders" placeholder="بحث برقم التتبع أو الأوردر..." class="w-full pl-3 pr-10 py-2 border rounded-lg text-sm focus:ring-blue-500 focus:border-blue-500">
-                    <i data-lucide="search" class="w-4 h-4 text-gray-400 absolute left-3 top-2.5"></i>
+            <div class="flex flex-col xl:flex-row items-start xl:items-center justify-between gap-4 mb-6">
+                <div>
+                    <h2 class="text-2xl font-bold text-gray-800 flex items-center gap-2">
+                        <i data-lucide="shopping-bag" class="text-blue-600 w-6 h-6"></i> إدارة الأوردرات
+                    </h2>
+                    <p class="text-gray-500 text-sm mt-1">التحكم الكامل ببيانات الطرود وتفعيل علامة الحظر (LEO)</p>
+                </div>
+                <div class="flex flex-wrap items-center gap-3 w-full xl:w-auto">
+                    <select id="filter-status" class="py-2.5 px-3 border border-gray-200 rounded-xl text-sm font-bold text-gray-700 bg-gray-50 hover:bg-white focus:ring-2 focus:ring-blue-500 transition-all">
+                        <option value="all">الكل (All Statuses)</option>
+                        <option value="Shipped">تم الشحن (Shipped)</option>
+                        <option value="Pending">قيد الانتظار (Pending)</option>
+                    </select>
+                    <select id="filter-leo" class="py-2.5 px-3 border border-gray-200 rounded-xl text-sm font-bold text-gray-700 bg-gray-50 hover:bg-white focus:ring-2 focus:ring-blue-500 transition-all">
+                        <option value="all">الكل (All LEO)</option>
+                        <option value="leo_active">حظر LEO (Active)</option>
+                        <option value="leo_normal">عادي (Normal)</option>
+                    </select>
+                    <div class="relative flex-1 sm:w-72">
+                        <input type="text" id="searchOrders" placeholder="ابحث برقم الأوردر، التتبع، المنتجات..." class="w-full pl-3 pr-10 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 transition-all shadow-sm">
+                        <i data-lucide="search" class="w-4 h-4 text-gray-400 absolute right-3 top-3"></i>
+                    </div>
                 </div>
             </div>
             
@@ -90,21 +107,21 @@
             <div id="workersMonitor" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6"></div>
 
             <div class="bg-white rounded-xl shadow-sm border overflow-hidden">
-                <div class="overflow-x-auto">
-                    <table class="min-w-full divide-y divide-gray-200 text-sm">
-                        <thead class="bg-gray-50">
+                <div class="overflow-x-auto min-h-[60vh]">
+                    <table class="w-full text-right text-sm">
+                        <thead class="bg-gray-50 text-gray-500 sticky top-0 shadow-sm z-10">
                             <tr>
-                                <th class="px-4 py-3 text-right font-medium text-gray-500">الأوردر / التتبع</th>
-                                <th class="px-4 py-3 text-right font-medium text-gray-500">التحصيل (COD)</th>
-                                <th class="px-4 py-3 text-right font-medium text-gray-500">المنتجات</th>
-                                <th class="px-4 py-3 text-right font-medium text-gray-500">العامل المعين</th>
-                                <th class="px-4 py-3 text-right font-medium text-gray-500">موعد الإسكان</th>
-                                <th class="px-4 py-3 text-right font-medium text-gray-500">ملاحظات حية</th>
-                                <th class="px-4 py-3 text-right font-medium text-gray-500">الحالة</th>
-                                <th class="px-4 py-3 text-center font-medium text-gray-500">حظر LEO</th>
+                                <th class="p-4 font-bold border-b border-gray-100">رقم الأوردر</th>
+                                <th class="p-4 font-bold border-b border-gray-100">رقم التتبع</th>
+                                <th class="p-4 font-bold border-b border-gray-100">التحصيل (COD)</th>
+                                <th class="p-4 font-bold border-b border-gray-100">المنتجات (Products)</th>
+                                <th class="p-4 font-bold border-b border-gray-100">الملاحظات</th>
+                                <th class="p-4 font-bold border-b border-gray-100 text-center">الحالة</th>
+                                <th class="p-4 font-bold border-b border-gray-100 text-center">حالة LEO</th>
+                                <th class="p-4 font-bold border-b border-gray-100 text-center">تفاصيل الإسكان</th>
                             </tr>
                         </thead>
-                        <tbody id="ordersTableBody" class="bg-white divide-y divide-gray-200"></tbody>
+                        <tbody id="ordersTableBody" class="divide-y divide-gray-100"></tbody>
                     </table>
                 </div>
             </div>
@@ -296,11 +313,12 @@
                 t.classList.add('translate-y-20', 'opacity-0');
             }, 3000);
         };
-
-        window.saveNote = async function(key) {
-            const note = document.getElementById(`note_${key}`).value;
-            await update(ref(db), { [`/${ORDERS_PATH}/${key}/notes`]: note });
-            showToast('تم حفظ الملاحظة');
+        window.debounceSaveNote = function(key, val) {
+            if(window[`timer_${key}`]) clearTimeout(window[`timer_${key}`]);
+            window[`timer_${key}`] = setTimeout(async () => {
+                await update(ref(db), { [`/${ORDERS_PATH}/${key}/notes`]: val });
+                showToast('تم حفظ الملاحظة تلقائياً');
+            }, 800);
         };
 
         // 1. Auth Guard
@@ -330,54 +348,101 @@
         // 4. View 1: Orders
         function renderOrdersTable() {
             const tbody = document.getElementById('ordersTableBody');
+            if(!tbody) return;
             tbody.innerHTML = '';
-            const searchQ = document.getElementById('searchOrders').value.toLowerCase();
+            
+            const searchQ = document.getElementById('searchOrders') ? document.getElementById('searchOrders').value.toLowerCase() : '';
+            const statusFilter = document.getElementById('filter-status') ? document.getElementById('filter-status').value : 'all';
+            const leoFilter = document.getElementById('filter-leo') ? document.getElementById('filter-leo').value : 'all';
+            
             const keys = Object.keys(allOrders).reverse();
             
             for (const key of keys) {
                 const order = allOrders[key];
-                if (searchQ && !order.trackingNumber.toLowerCase().includes(searchQ) && !order.orderId.toLowerCase().includes(searchQ)) continue;
+                
+                // Filters
+                if (statusFilter !== 'all' && order.status !== statusFilter) continue;
+                if (leoFilter === 'leo_active' && !order.isLeo) continue;
+                if (leoFilter === 'leo_normal' && order.isLeo) continue;
+                
+                if (searchQ) {
+                    const matchId = String(order.orderId).toLowerCase().includes(searchQ);
+                    const matchTracking = String(order.trackingNumber).toLowerCase().includes(searchQ);
+                    const matchProducts = String(order.products).toLowerCase().includes(searchQ);
+                    if (!matchId && !matchTracking && !matchProducts) continue;
+                }
 
-                let statusHtml = `<span class="px-2 py-1 text-[11px] font-bold rounded-md bg-yellow-100 text-yellow-800">Pending</span>`;
-                if(order.status === 'Shipped') statusHtml = `<span class="px-2 py-1 text-[11px] font-bold rounded-md bg-green-100 text-green-800">Shipped</span>`;
-                if(order.status === 'Packed') statusHtml = `<span class="px-2 py-1 text-[11px] font-bold rounded-md bg-blue-100 text-blue-800">Packed</span>`;
+                // Status Badge
+                let statusHtml = `<div class="inline-flex items-center gap-2 px-3 py-1 rounded-xl bg-amber-50 text-amber-600 font-bold border border-amber-200 text-xs shadow-sm"><i data-lucide="clock" class="w-3 h-3"></i> قيد الانتظار</div>`;
+                if(order.status === 'Shipped') statusHtml = `<div class="inline-flex items-center gap-2 px-3 py-1 rounded-xl bg-green-50 text-green-700 font-bold border border-green-200 text-xs shadow-sm"><i data-lucide="check-circle" class="w-3 h-3"></i> تم الشحن</div>`;
+                
+                // Products (Badges)
+                let productsDisplay = order.products;
+                if (order.parsedProducts && order.parsedProducts.length > 0) {
+                    productsDisplay = `<div class="flex flex-col bg-white border border-gray-200 rounded-xl p-1 shadow-sm w-full max-w-md">` + 
+                        order.parsedProducts.map(p => `
+                        <div class="flex items-center justify-between gap-4 p-2 border-b border-gray-100 last:border-0 hover:bg-gray-50 rounded-lg transition-colors group/item">
+                            <span class="bg-indigo-50 text-indigo-700 border border-indigo-100 px-2.5 py-1 rounded-lg text-xs font-bold shrink-0 shadow-sm" dir="rtl">
+                                العدد: ${p.quantity}
+                            </span>
+                            <span class="text-gray-800 font-semibold text-sm text-left product-name w-full leading-snug whitespace-normal" dir="ltr" style="font-family: 'Inter', sans-serif;">
+                                ${p.name}
+                            </span>
+                        </div>
+                    `).join('') + `</div>`;
+                }
 
+                // LEO Guard Toggle
                 const toggleId = `leo_${key}`;
                 const isChecked = order.isLeo ? 'checked' : '';
                 const toggleHtml = `
-                    <div class="relative inline-block w-10 align-middle select-none transition duration-200 ease-in">
-                        <input type="checkbox" id="${toggleId}" ${isChecked} data-key="${key}" class="leo-toggle absolute block w-5 h-5 rounded-full bg-white border-4 appearance-none cursor-pointer z-10 transition-transform duration-200 ease-in-out"/>
-                        <label for="${toggleId}" class="block overflow-hidden h-5 rounded-full bg-gray-300 cursor-pointer transition-colors duration-200 ease-in-out"></label>
+                    <div class="flex flex-col items-center gap-1">
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" id="${toggleId}" ${isChecked} data-key="${key}" class="sr-only peer leo-toggle">
+                            <div class="w-9 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:right-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-red-500"></div>
+                        </label>
+                        <span class="text-[10px] font-bold ${order.isLeo ? 'text-red-600' : 'text-gray-400'}">${order.isLeo ? 'حظر LEO' : 'عادي'}</span>
                     </div>
                 `;
 
-                let productsDisplay = order.products;
-                if (order.parsedProducts && order.parsedProducts.length > 0) {
-                    productsDisplay = order.parsedProducts.map(p => `<div class="text-xs mb-1">▪ ${p.name} <span class="font-bold text-blue-600">(العدد: ${p.quantity})</span> ${p.condition ? `<span class="text-red-500">${p.condition}</span>` : ''}</div>`).join('');
-                }
-
+                // Scan Details
                 const scanDetails = order.status === 'Shipped' && order.scanTime 
-                    ? `<div class="text-[11px] text-green-700 font-bold">${order.scannedBy || '-'}</div><div class="text-[10px] text-gray-500">${new Date(order.scanTime).toLocaleString('ar-EG')}</div>`
+                    ? `<div class="text-xs text-gray-500 font-bold">${order.scannedBy || '-'} | <span dir="ltr">${new Date(order.scanTime).toLocaleTimeString('ar-EG')}</span></div>`
                     : `<div class="text-[11px] text-gray-400">لم يتم الإسكان</div>`;
 
+                // Notes Input
                 const notesHtml = `
-                    <div class="flex items-center gap-1 min-w-[150px]">
-                        <input type="text" id="note_${key}" value="${order.notes || ''}" placeholder="..." class="w-full text-xs border rounded p-1 border-gray-300 focus:outline-none focus:border-blue-500">
-                        <button onclick="saveNote('${key}')" class="text-blue-600 hover:text-blue-800 p-1 bg-blue-50 rounded">💾</button>
-                    </div>
+                    <input type="text" value="${order.notes || ''}" oninput="debounceSaveNote('${key}', this.value)" placeholder="ملاحظة..." class="w-full text-xs font-bold border border-gray-200 rounded-lg px-2 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-50 hover:bg-white transition-all shadow-sm">
                 `;
 
+                // Row
                 const tr = document.createElement('tr');
-                tr.className = order.isLeo ? 'bg-orange-50' : '';
+                tr.className = `hover:bg-gray-50/50 transition-colors group ${order.isLeo ? 'bg-red-50/30' : ''}`;
                 tr.innerHTML = `
-                    <td class="px-4 py-3 whitespace-nowrap text-sm font-bold text-gray-900">${order.trackingNumber}<br><span class="text-[10px] text-gray-500 font-normal">Order: ${order.orderId}</span></td>
-                    <td class="px-4 py-3 whitespace-nowrap text-sm font-bold text-gray-800">${order.cod || 0} ج.م</td>
-                    <td class="px-4 py-3 text-sm text-gray-700 min-w-[200px]">${productsDisplay}</td>
-                    <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-600">${order.assignedName || order.assignedTo}</td>
-                    <td class="px-4 py-3 whitespace-nowrap">${scanDetails}</td>
-                    <td class="px-4 py-3 whitespace-nowrap">${notesHtml}</td>
-                    <td class="px-4 py-3 whitespace-nowrap">${statusHtml}</td>
-                    <td class="px-4 py-3 whitespace-nowrap text-center">${toggleHtml}</td>
+                    <td class="p-4 align-top border-b border-gray-100">
+                        <div class="font-black text-gray-900 text-lg mb-1 text-right" dir="ltr">#${order.orderId}</div>
+                    </td>
+                    <td class="p-4 align-top border-b border-gray-100">
+                        <div class="font-mono text-gray-500 text-sm text-right" dir="ltr">${order.trackingNumber}</div>
+                    </td>
+                    <td class="p-4 align-top border-b border-gray-100 text-right">
+                        <div class="text-sm font-bold ${order.cod ? 'text-red-600' : 'text-gray-500'}">${order.cod || 'N/A'} ${order.cod ? 'ج.م' : ''}</div>
+                    </td>
+                    <td class="p-4 align-top border-b border-gray-100 w-1/3 text-right">
+                        ${productsDisplay}
+                    </td>
+                    <td class="p-4 align-top border-b border-gray-100 w-48 text-right">
+                        ${notesHtml}
+                    </td>
+                    <td class="p-4 align-middle border-b border-gray-100 text-center">
+                        ${statusHtml}
+                    </td>
+                    <td class="p-4 align-middle border-b border-gray-100 text-center">
+                        ${toggleHtml}
+                    </td>
+                    <td class="p-4 align-middle border-b border-gray-100 text-center">
+                        ${scanDetails}
+                    </td>
                 `;
                 tbody.appendChild(tr);
             }
@@ -570,9 +635,8 @@
                 // Loop through uploaded PDFs
                 for (let i = 0; i < files.length; i++) {
                     const file = files[i];
-                    // Extract Order ID from filename (assuming filename matches Business Reference Number)
-                    // Remove .pdf extension and trim
-                    const pdfOrderId = file.name.replace(/\.[^/.]+$/, "").trim();
+                    // Extract Order ID from filename
+                    const pdfOrderId = BulkEngine.extractOrderIdFromFileName(file.name);
 
                     // Search for orderId in allOrders
                     // Note: allOrders keys are WAYBILL_..., the orderId property holds the reference
