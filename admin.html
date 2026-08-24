@@ -280,10 +280,9 @@
         <div id="archiveModal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 z-50 flex items-center justify-center">
             <div class="bg-white rounded-xl shadow-xl w-full max-w-md p-6">
                 <h3 class="text-lg font-bold text-red-600 mb-4 border-b pb-2 flex items-center gap-2"><i data-lucide="alert-triangle"></i> خيارات الأرشفة والحذف</h3>
-                <select id="archiveAction" class="w-full border p-2 rounded-lg mb-4">
-                    <option value="today_shipped">حذف أوردرات اليوم المشحونة فقط</option>
-                    <option value="week_all">مسح جميع الأوردرات القديمة لأكثر من أسبوع</option>
-                    <option value="reset_all">تصفير الأرشيف بالكامل (حذف الكل)</option>
+                <select id="archiveAction" class="w-full border p-2 rounded-lg mb-4 text-sm font-bold">
+                    <option value="purge_older_30">مسح ما قبل شهر (أقدم من 30 يوم)</option>
+                    <option value="purge_all_archive">مسح الأرشيف بالكامل (شامل المرتجعات)</option>
                 </select>
                 <div class="flex justify-end gap-2 mt-6">
                     <button onclick="document.getElementById('archiveModal').classList.add('hidden')" class="px-4 py-2 bg-gray-200 rounded-lg text-gray-800">إلغاء</button>
@@ -1170,19 +1169,21 @@
             renderReportsTable();
         };
 
+        let currentFilteredReportsList = [];
+
         function renderReportsTable() {
             const el = document.getElementById('reportsCountStatus');
             const tbody = document.getElementById('reportsTableBody');
             if(!tbody) return;
             
-            const filtered = getFilteredReports();
+            currentFilteredReportsList = getFilteredReports();
             if(el) {
-                el.innerHTML = `تم تحميل <span class="text-blue-600">${filtered.length}</span> أوردر`;
+                el.innerHTML = `تم تحميل <span class="text-blue-600">${currentFilteredReportsList.length}</span> أوردر`;
             }
             
             tbody.innerHTML = '';
             
-            filtered.forEach(order => {
+            currentFilteredReportsList.forEach(order => {
                 // Status Badge & Products Display
                 let statusHtml = '';
                 let productsDisplay = '';
@@ -1267,20 +1268,22 @@
         if(document.getElementById('reportSearch')) document.getElementById('reportSearch').addEventListener('input', window.renderReportsStatus);
 
         document.getElementById('btnExportRepExcel').addEventListener('click', () => {
-            const data = getFilteredReports().map(o => {
+            if(currentFilteredReportsList.length === 0) return alert('لا يوجد بيانات للتصدير');
+            const data = currentFilteredReportsList.map(o => {
                 let statusLabel = o.status;
                 if(o.recordType === 'return') {
                     statusLabel = o.status === 'Received' ? 'مرتجع مستلم' : 'مرتجع معلق';
                 }
                 return {
-                    "رقم التتبع": o.trackingNumber, 
                     "رقم الأوردر": o.orderId, 
-                    "العامل": o.assignedName || o.scannedByUsername || o.scannedBy || '', 
-                    "المنتجات": o.recordType === 'return' ? '' : o.products,
+                    "رقم التتبع": o.trackingNumber, 
+                    "التحصيل (COD)": o.recordType === 'return' ? '' : o.cod, 
+                    "المنتجات": o.recordType === 'return' ? 'طلب مرتجع' : o.products,
+                    "الملاحظات": o.notes || '',
                     "الحالة": statusLabel, 
-                    "التحصيل": o.recordType === 'return' ? '' : o.cod, 
-                    "وقت الإسكان": o.scanTime ? new Date(o.scanTime).toLocaleString('ar-EG') : '', 
-                    "ملاحظات": o.notes || ''
+                    "المسؤول": o.scannedByUsername || o.scannedBy || o.assignedName || '', 
+                    "الوقت": o.scanTime ? new Date(o.scanTime).toLocaleString('ar-EG') : '',
+                    "العامل المعين": o.assignedName || ''
                 };
             });
             if(data.length===0) return alert('لا يوجد بيانات للتصدير');
@@ -1435,29 +1438,23 @@
             });
         }
 
-        document.getElementById('btnExportAuditPdf').addEventListener('click', () => {
-            const reports = getFilteredReports();
-            if(reports.length === 0) return alert('لا يوجد بيانات للتصدير');
-            
-            const { jsPDF } = window.jspdf;
-            const doc = new jsPDF('p', 'pt', 'a4'); // Portrait format
-            
-            generateAuditPdf(doc, reports);
-            doc.save(`Internal_Audit_${new Date().toISOString().split('T')[0]}.pdf`);
-        });
-
-        document.getElementById('btnPrintAudit').addEventListener('click', () => {
-            const reports = getFilteredReports();
-            if(reports.length === 0) return alert('لا يوجد بيانات للطباعة');
+        window.generateInternalAuditPDF = function(action) {
+            if(currentFilteredReportsList.length === 0) return alert('لا يوجد بيانات للطباعة أو التصدير');
             
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF('p', 'pt', 'a4');
+            generateAuditPdf(doc, currentFilteredReportsList);
             
-            generateAuditPdf(doc, reports);
-            
-            doc.autoPrint();
-            window.open(doc.output('bloburl'), '_blank');
-        });
+            if (action === 'download') {
+                doc.save(`Internal_Audit_${new Date().toISOString().split('T')[0]}.pdf`);
+            } else if (action === 'print') {
+                doc.autoPrint();
+                window.open(doc.output('bloburl'), '_blank');
+            }
+        };
+
+        document.getElementById('btnExportAuditPdf').addEventListener('click', () => window.generateInternalAuditPDF('download'));
+        document.getElementById('btnPrintAudit').addEventListener('click', () => window.generateInternalAuditPDF('print'));
 
         document.getElementById('confirmArchiveBtn').addEventListener('click', async () => {
             const action = document.getElementById('archiveAction').value;
@@ -1465,27 +1462,38 @@
             let count = 0;
             const now = new Date();
             
-            if (action === 'today_shipped') {
-                const todayStart = new Date(now.setHours(0,0,0,0));
-                for(const [k, o] of Object.entries(allOrders)) {
-                    if(o.status === 'Shipped' && o.scanTime && new Date(o.scanTime) >= todayStart) { updates[`/${ORDERS_PATH}/${k}`] = null; count++; }
+            if (action === 'purge_older_30') {
+                const thirtyDaysAgo = new Date(now.setDate(now.getDate() - 30));
+                
+                // Process Archived Orders
+                for(const [k, o] of Object.entries(archivedOrders)) {
+                    const d = o.scanTime || o.createdAt;
+                    if(d && new Date(d) < thirtyDaysAgo) { 
+                        updates[`${ARCHIVE_ORDERS_PATH}/${k}`] = null; 
+                        count++; 
+                    }
                 }
-            } else if (action === 'week_all') {
-                const weekAgo = new Date(now.setDate(now.getDate() - 7));
-                for(const [k, o] of Object.entries(allOrders)) {
-                    const d = o.createdAt || o.scanTime;
-                    if(d && new Date(d) < weekAgo) { updates[`/${ORDERS_PATH}/${k}`] = null; count++; }
+                
+                // Process Archived Returns
+                for(const [k, o] of Object.entries(archivedReturns)) {
+                    const d = o.scanTime || o.createdAt;
+                    if(d && new Date(d) < thirtyDaysAgo) { 
+                        updates[`${ARCHIVE_RETURNS_PATH}/${k}`] = null; 
+                        count++; 
+                    }
                 }
-            } else if (action === 'reset_all') {
-                if(confirm("تحذير أمني: هل أنت متأكد تماماً من حذف جميع الأوردرات من السيرفر؟")) {
-                    await set(ref(db, ORDERS_PATH), null);
-                    await set(ref(db, BATCHES_PATH), null);
-                    count = Object.keys(allOrders).length;
+                
+                if(Object.keys(updates).length > 0) await update(ref(db), updates);
+                showToast(`تم بنجاح مسح ${count} عنصر أقدم من شهر واحد.`);
+                
+            } else if (action === 'purge_all_archive') {
+                if(confirm("تحذير أمني خطير: سيتم مسح الأرشيف بالكامل (أوردرات ومرتجعات) بشكل نهائي. هل أنت متأكد؟")) {
+                    await set(ref(db, ARCHIVE_ORDERS_PATH), null);
+                    await set(ref(db, ARCHIVE_RETURNS_PATH), null);
+                    showToast(`تم تصفير الأرشيف بالكامل بنجاح.`);
                 }
             }
-            if(Object.keys(updates).length > 0) await update(ref(db), updates);
             
-            showToast(`تم مسح ${count} أوردر بنجاح.`);
             document.getElementById('archiveModal').classList.add('hidden');
         });
 
