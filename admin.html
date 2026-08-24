@@ -1369,90 +1369,102 @@
             window.open(doc.output('bloburl'), '_blank');
         });
 
-        function generateAuditPdf(doc, reports) {
-            doc.addFont('https://raw.githubusercontent.com/wsmariano/Cairo/master/Cairo-Regular.ttf', 'Cairo', 'normal');
-            doc.setFont('Cairo');
-            
-            // Header
-            doc.setFontSize(18);
-            doc.text("جدول الجرد الشامل للأوردرات والمنتجات", 550, 40, { align: 'right' });
-            
-            doc.setFontSize(10);
-            doc.text(`التاريخ: ${new Date().toLocaleDateString('en-GB')}`, 550, 60, { align: 'right' });
-            doc.text(`إجمالي العدد: ${reports.length}`, 550, 75, { align: 'right' });
-
-            const tableData = reports.map((o, index) => {
-                // Formatting products list
-                let productsList = o.recordType === 'return' ? 'طلب مرتجع' : (o.products || '');
-                if (o.recordType !== 'return' && o.parsedProducts && o.parsedProducts.length > 0) {
-                    productsList = o.parsedProducts.map(p => `${p.name} (x${p.quantity})`).join('\n');
+        window.generateInternalAuditPDF = function(action = 'download') {
+            try {
+                // Check jsPDF library availability
+                const { jsPDF } = window.jspdf || {};
+                if (!jsPDF) {
+                    alert("خطأ: مكتبة jsPDF غير محملة. يرجى التحقق من اتصال الإنترنت.");
+                    return;
                 }
 
-                // Status text mapping
-                let statusLabel = o.status === 'Shipped' ? 'تم الشحن' : 'قيد الانتظار';
-                if(o.recordType === 'return') {
-                    statusLabel = o.status === 'Received' ? 'مرتجع مستلم' : 'مرتجع معلق';
+                // Capture currently filtered rows directly from state or the visible DOM table
+                let rowsToExport = [];
+                
+                if (window.currentFilteredReportsList && window.currentFilteredReportsList.length > 0) {
+                    rowsToExport = window.currentFilteredReportsList;
+                } else {
+                    // Direct DOM Fallback if state variable is out of sync
+                    const tableRows = document.querySelectorAll('#reportsTableBody tr');
+                    tableRows.forEach(tr => {
+                        const cols = tr.querySelectorAll('td');
+                        if (cols.length >= 6) {
+                            rowsToExport.push({
+                                orderId: cols[0]?.innerText?.trim() || '-',
+                                tracking: cols[1]?.innerText?.trim() || '-',
+                                cod: cols[2]?.innerText?.trim() || '-',
+                                worker: cols[3]?.innerText?.trim() || '-',
+                                status: cols[6]?.innerText?.trim() || '-',
+                                time: cols[7]?.innerText?.trim() || '-'
+                            });
+                        }
+                    });
                 }
 
-                return [
-                    statusLabel,
-                    o.scanTime ? new Date(o.scanTime).toLocaleTimeString('en-GB') : '-',
-                    o.assignedName || o.scannedByUsername || o.scannedBy || '-',
-                    o.notes || '—',
-                    o.recordType === 'return' ? '-' : (o.cod ? `${Number(o.cod).toLocaleString('en-US')} ج.م` : 'N/A'),
-                    productsList,
-                    o.trackingNumber || '-',
-                    o.orderId || '-',
-                    index + 1
-                ];
-            });
+                if (rowsToExport.length === 0) {
+                    alert("لا توجد بيانات مطابقة للفلتر لتحميلها في التقرير!");
+                    return;
+                }
 
-            doc.autoTable({
-                startY: 90,
-                head: [['الحالة', 'الوقت', 'المسؤول', 'الملاحظات', 'التحصيل', 'المنتجات', 'رقم التتبع', 'رقم الأوردر', '#']],
-                body: tableData,
-                theme: 'grid',
-                styles: { 
-                    font: 'Cairo', 
-                    fontSize: 8, 
-                    halign: 'right', // Default RTL alignment
-                    valign: 'middle',
-                    cellPadding: 4,
-                    lineColor: [0, 0, 0], 
-                    lineWidth: 0.2
-                },
-                headStyles: { 
-                    fillColor: [240, 240, 240], 
-                    textColor: [0, 0, 0], 
-                    fontStyle: 'bold',
-                    halign: 'center' 
-                },
-                columnStyles: {
-                    0: { halign: 'center', cellWidth: 50 }, // Status
-                    1: { halign: 'center', cellWidth: 40 }, // Time
-                    2: { halign: 'center', cellWidth: 50 }, // Worker
-                    3: { halign: 'right', cellWidth: 60 },  // Notes
-                    4: { halign: 'center', fontStyle: 'bold', cellWidth: 50 }, // COD
-                    5: { halign: 'left', cellWidth: 'auto' }, // Products (LTR for english chars)
-                    6: { halign: 'center', font: 'helvetica', fontStyle: 'normal', cellWidth: 60 }, // Tracking
-                    7: { halign: 'center', fontStyle: 'bold', cellWidth: 50 }, // Order ID
-                    8: { halign: 'center', cellWidth: 20 }  // Index
-                },
-            });
-        }
+                // Initialize Portrait A4 PDF
+                const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
 
-        window.generateInternalAuditPDF = function(action) {
-            if(currentFilteredReportsList.length === 0) return alert('لا يوجد بيانات للطباعة أو التصدير');
-            
-            const { jsPDF } = window.jspdf;
-            const doc = new jsPDF('p', 'pt', 'a4');
-            generateAuditPdf(doc, currentFilteredReportsList);
-            
-            if (action === 'download') {
-                doc.save(`Internal_Audit_${new Date().toISOString().split('T')[0]}.pdf`);
-            } else if (action === 'print') {
-                doc.autoPrint();
-                window.open(doc.output('bloburl'), '_blank');
+                // Document Header
+                doc.setFontSize(15);
+                doc.text("Warehouse Internal Audit Report", 14, 15);
+                doc.setFontSize(8);
+                doc.text(`Export Date: ${new Date().toLocaleString('en-US')} | Filtered Records: ${rowsToExport.length}`, 14, 21);
+
+                // Build Table Rows
+                const tableColumn = ["#", "Order ID", "Tracking", "COD", "Worker", "Status", "Time"];
+                const tableData = rowsToExport.map((row, index) => [
+                    index + 1,
+                    row.orderId || row.id || '-',
+                    row.trackingNumber || row.tracking || '-',
+                    row.cod || 'N/A',
+                    row.assignedWorker || row.worker || row.assignedName || '-',
+                    row.status || 'Pending',
+                    row.scanTime ? new Date(row.scanTime).toLocaleString('en-GB') : (row.time || '-')
+                ]);
+
+                // Render Grid
+                doc.autoTable({
+                    head: [tableColumn],
+                    body: tableData,
+                    startY: 25,
+                    theme: 'grid',
+                    styles: {
+                        fontSize: 8,
+                        cellPadding: 2,
+                        halign: 'center'
+                    },
+                    headStyles: {
+                        fillColor: [30, 41, 59],
+                        textColor: [255, 255, 255],
+                        fontStyle: 'bold'
+                    },
+                    columnStyles: {
+                        0: { cellWidth: 10 },
+                        1: { cellWidth: 28, fontStyle: 'bold' },
+                        2: { cellWidth: 32 },
+                        3: { cellWidth: 25 },
+                        4: { cellWidth: 25 },
+                        5: { cellWidth: 25 },
+                        6: { cellWidth: 25 }
+                    }
+                });
+
+                if (action === 'print') {
+                    doc.autoPrint();
+                    window.open(doc.output('bloburl'), '_blank');
+                } else {
+                    // Instant Download
+                    doc.save(`Internal_Audit_${new Date().toISOString().slice(0,10)}.pdf`);
+                }
+
+            } catch (error) {
+                console.error("PDF Export Failure:", error);
+                alert("حدث خطأ أثناء تحميل التقرير: " + error.message);
             }
         };
 
