@@ -240,6 +240,12 @@
 
                 <!-- Left Side: Actions -->
                 <div class="flex flex-wrap items-center gap-2">
+                    <div id="batchDeleteBar" class="hidden flex items-center gap-2 mr-4 bg-red-50 px-3 py-1.5 rounded-lg border border-red-200">
+                        <span class="text-xs font-bold text-red-700" id="selectedCountText">تم تحديد 0 سجل</span>
+                        <button id="btnBatchDeleteReports" class="bg-red-600 text-white px-2 py-1 rounded text-xs font-bold hover:bg-red-700 flex items-center gap-1 shadow-sm">
+                            <i data-lucide="trash-2" class="w-3.5 h-3.5"></i> حذف المحدد
+                        </button>
+                    </div>
                     <button id="btnExportRepExcel" class="bg-green-600 text-white px-3 py-1.5 rounded-lg text-sm hover:bg-green-700 font-bold flex items-center gap-1 shadow-sm">
                         <i data-lucide="file-spreadsheet" class="w-4 h-4"></i> إكسيل
                     </button>
@@ -260,6 +266,9 @@
                     <table class="w-full text-right text-sm">
                         <thead class="bg-gray-50 text-gray-500 sticky top-0 shadow-sm z-10">
                             <tr>
+                                <th class="p-4 font-bold border-b border-gray-100 w-12 text-center">
+                                    <input type="checkbox" id="selectAllReports" class="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500 cursor-pointer">
+                                </th>
                                 <th class="p-4 font-bold border-b border-gray-100">رقم الأوردر</th>
                                 <th class="p-4 font-bold border-b border-gray-100">رقم التتبع</th>
                                 <th class="p-4 font-bold border-b border-gray-100">التحصيل (COD)</th>
@@ -268,6 +277,7 @@
                                 <th class="p-4 font-bold border-b border-gray-100">الملاحظات</th>
                                 <th class="p-4 font-bold border-b border-gray-100 text-center">الحالة</th>
                                 <th class="p-4 font-bold border-b border-gray-100 text-center">تفاصيل الإسكان</th>
+                                <th class="p-4 font-bold border-b border-gray-100 text-center w-12">حذف</th>
                             </tr>
                         </thead>
                         <tbody id="reportsTableBody" class="divide-y divide-gray-100"></tbody>
@@ -1123,8 +1133,8 @@
         // 6. View 3: Reports
         // 6. View 3: Reports
         function getFilteredReports() {
-            const allOrdersArr = Object.values({ ...archivedOrders, ...allOrders }).map(o => ({...o, recordType: 'order'}));
-            const allReturnsArr = Object.values({ ...archivedReturns, ...allReturns }).map(o => ({...o, recordType: 'return'}));
+            const allOrdersArr = Object.entries({ ...archivedOrders, ...allOrders }).map(([k, o]) => ({...o, recordType: 'order', recordKey: k}));
+            const allReturnsArr = Object.entries({ ...archivedReturns, ...allReturns }).map(([k, o]) => ({...o, recordType: 'return', recordKey: k}));
             const combinedArray = [...allOrdersArr, ...allReturnsArr].sort((a,b) => {
                 const da = new Date(a.scanTime || a.createdAt || 0);
                 const db = new Date(b.scanTime || b.createdAt || 0);
@@ -1237,6 +1247,9 @@
                 const tr = document.createElement('tr');
                 tr.className = "hover:bg-blue-50/50 transition-colors group";
                 tr.innerHTML = `
+                    <td class="p-4 align-middle text-center">
+                        <input type="checkbox" class="report-row-checkbox w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500 cursor-pointer" data-id="${order.recordKey}" data-type="${order.recordType}">
+                    </td>
                     <td class="p-4 align-top">
                         <div class="font-black text-gray-800 text-base">#${order.orderId || '-'}</div>
                     </td>
@@ -1257,10 +1270,107 @@
                     </td>
                     <td class="p-4 align-top text-center">${statusHtml}</td>
                     <td class="p-4 align-top text-center">${scanDetailsHtml}</td>
+                    <td class="p-4 align-middle text-center">
+                        <button onclick="deleteSingleReportRecord('${order.recordKey}', '${order.recordType}')" class="text-gray-400 hover:text-red-600 transition-colors bg-white hover:bg-red-50 p-1.5 rounded-lg border shadow-sm" title="حذف السجل">
+                            <i data-lucide="trash-2" class="w-4 h-4"></i>
+                        </button>
+                    </td>
                 `;
                 tbody.appendChild(tr);
             });
             lucide.createIcons();
+            attachReportCheckboxListeners();
+        }
+
+        function attachReportCheckboxListeners() {
+            const checkboxes = document.querySelectorAll('.report-row-checkbox');
+            const selectAll = document.getElementById('selectAllReports');
+            const batchBar = document.getElementById('batchDeleteBar');
+            const countText = document.getElementById('selectedCountText');
+            
+            const updateBatchBar = () => {
+                const checked = document.querySelectorAll('.report-row-checkbox:checked');
+                if(checked.length > 0) {
+                    batchBar.classList.remove('hidden');
+                    countText.textContent = `تم تحديد ${checked.length} سجل`;
+                } else {
+                    batchBar.classList.add('hidden');
+                }
+                
+                if(selectAll) {
+                    selectAll.checked = checkboxes.length > 0 && checked.length === checkboxes.length;
+                }
+            };
+            
+            checkboxes.forEach(cb => cb.addEventListener('change', updateBatchBar));
+            
+            if(selectAll) {
+                // Remove previous listener to avoid duplicates on re-render
+                const newSelectAll = selectAll.cloneNode(true);
+                selectAll.parentNode.replaceChild(newSelectAll, selectAll);
+                
+                newSelectAll.addEventListener('change', (e) => {
+                    const isChecked = e.target.checked;
+                    document.querySelectorAll('.report-row-checkbox').forEach(cb => {
+                        cb.checked = isChecked;
+                    });
+                    updateBatchBar();
+                });
+            }
+        }
+
+        window.deleteSingleReportRecord = async function(key, type) {
+            if(!confirm('هل أنت متأكد من حذف هذا السجل نهائياً؟')) return;
+            
+            try {
+                const updates = {};
+                if (type === 'order') {
+                    updates[`${ORDERS_PATH}/${key}`] = null;
+                    updates[`${ARCHIVE_ORDERS_PATH}/${key}`] = null;
+                } else if (type === 'return') {
+                    updates[`${RETURNS_PATH}/${key}`] = null;
+                    updates[`${ARCHIVE_RETURNS_PATH}/${key}`] = null;
+                }
+                
+                await update(ref(db), updates);
+                showToast('تم حذف السجل بنجاح');
+            } catch (err) {
+                console.error(err);
+                alert('حدث خطأ أثناء الحذف');
+            }
+        };
+
+        if(document.getElementById('btnBatchDeleteReports')) {
+            document.getElementById('btnBatchDeleteReports').addEventListener('click', async () => {
+                const checked = document.querySelectorAll('.report-row-checkbox:checked');
+                if(checked.length === 0) return;
+                
+                if(!confirm(`هل أنت متأكد تماماً من حذف ${checked.length} سجل نهائياً عبر جميع قوائم النظام والأرشيف؟`)) return;
+                
+                try {
+                    const updates = {};
+                    checked.forEach(cb => {
+                        const key = cb.getAttribute('data-id');
+                        const type = cb.getAttribute('data-type');
+                        
+                        if (type === 'order') {
+                            updates[`${ORDERS_PATH}/${key}`] = null;
+                            updates[`${ARCHIVE_ORDERS_PATH}/${key}`] = null;
+                        } else if (type === 'return') {
+                            updates[`${RETURNS_PATH}/${key}`] = null;
+                            updates[`${ARCHIVE_RETURNS_PATH}/${key}`] = null;
+                        }
+                    });
+                    
+                    await update(ref(db), updates);
+                    showToast(`تم حذف ${checked.length} سجل بنجاح.`);
+                    document.getElementById('batchDeleteBar').classList.add('hidden');
+                    if(document.getElementById('selectAllReports')) document.getElementById('selectAllReports').checked = false;
+                } catch (err) {
+                    console.error(err);
+                    alert('حدث خطأ أثناء الحذف الجماعي');
+                }
+            });
         }
 
         if(document.getElementById('repStart')) document.getElementById('repStart').addEventListener('change', window.renderReportsStatus);
