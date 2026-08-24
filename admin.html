@@ -281,6 +281,7 @@
             <div class="bg-white rounded-xl shadow-xl w-full max-w-md p-6">
                 <h3 class="text-lg font-bold text-red-600 mb-4 border-b pb-2 flex items-center gap-2"><i data-lucide="alert-triangle"></i> خيارات الأرشفة والحذف</h3>
                 <select id="archiveAction" class="w-full border p-2 rounded-lg mb-4 text-sm font-bold">
+                    <option value="purge_older_7">مسح ما قبل أسبوع (أقدم من 7 أيام)</option>
                     <option value="purge_older_30">مسح ما قبل شهر (أقدم من 30 يوم)</option>
                     <option value="purge_all_archive">مسح الأرشيف بالكامل (شامل المرتجعات)</option>
                 </select>
@@ -1462,13 +1463,14 @@
             let count = 0;
             const now = new Date();
             
-            if (action === 'purge_older_30') {
-                const thirtyDaysAgo = new Date(now.setDate(now.getDate() - 30));
+            if (action === 'purge_older_7' || action === 'purge_older_30') {
+                const days = action === 'purge_older_7' ? 7 : 30;
+                const limitDate = new Date(now.setDate(now.getDate() - days));
                 
                 // Process Archived Orders
                 for(const [k, o] of Object.entries(archivedOrders)) {
                     const d = o.scanTime || o.createdAt;
-                    if(d && new Date(d) < thirtyDaysAgo) { 
+                    if(d && new Date(d) < limitDate) { 
                         updates[`${ARCHIVE_ORDERS_PATH}/${k}`] = null; 
                         count++; 
                     }
@@ -1477,14 +1479,14 @@
                 // Process Archived Returns
                 for(const [k, o] of Object.entries(archivedReturns)) {
                     const d = o.scanTime || o.createdAt;
-                    if(d && new Date(d) < thirtyDaysAgo) { 
+                    if(d && new Date(d) < limitDate) { 
                         updates[`${ARCHIVE_RETURNS_PATH}/${k}`] = null; 
                         count++; 
                     }
                 }
                 
                 if(Object.keys(updates).length > 0) await update(ref(db), updates);
-                showToast(`تم بنجاح مسح ${count} عنصر أقدم من شهر واحد.`);
+                showToast(`تم بنجاح مسح ${count} عنصر أقدم من ${days} يوم.`);
                 
             } else if (action === 'purge_all_archive') {
                 if(confirm("تحذير أمني خطير: سيتم مسح الأرشيف بالكامل (أوردرات ومرتجعات) بشكل نهائي. هل أنت متأكد؟")) {

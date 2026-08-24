@@ -58,14 +58,15 @@ export const BulkEngine = {
     },
 
     /**
-     * Extract only digits from filename
+     * Extract only digits from filename, stripping Arabic chars
      * e.g., "123728 ب.pdf" -> "123728"
      * @param {string} fileName 
      * @returns {string} 
      */
     extractOrderIdFromFileName(fileName) {
-        const match = fileName.replace(/\.pdf$/i, '').match(/\d+/g);
-        return match ? match.join('') : '';
+        if(!fileName) return '';
+        let nameWithoutExt = fileName.replace(/\.[^/.]+$/, "");
+        return nameWithoutExt.replace(/\D/g, '').trim();
     },
 
     /**
