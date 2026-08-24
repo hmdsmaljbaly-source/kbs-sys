@@ -1,0 +1,133 @@
+@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&family=Inter:wght@400;500;600&family=Tajawal:wght@400;500;700&display=swap');
+
+:root {
+  --kbs-primary: #1e3a8a; /* Tailwind blue-900 */
+  --kbs-accent: #3b82f6; /* Tailwind blue-500 */
+}
+
+body {
+  font-family: 'Tajawal', 'Cairo', sans-serif;
+  background-color: #f3f4f6; /* gray-100 */
+  color: #1f2937; /* gray-800 */
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: #f1f1f1; 
+}
+::-webkit-scrollbar-thumb {
+  background: #c1c1c1; 
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8; 
+}
+
+/* Overlays */
+.overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease-in-out;
+}
+
+.overlay.active {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.overlay h1 {
+  font-size: 4rem;
+  font-weight: bold;
+  margin-bottom: 1rem;
+  text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+}
+
+.overlay p {
+  font-size: 1.5rem;
+  font-weight: 500;
+}
+
+.overlay-leo {
+  background-color: rgba(234, 88, 12, 0.95); /* Tailwind orange-600 */
+  color: white;
+}
+
+.overlay-error {
+  background-color: rgba(220, 38, 38, 0.95); /* Tailwind red-600 */
+  color: white;
+}
+
+.overlay-success {
+  background-color: rgba(22, 163, 74, 0.95); /* Tailwind green-600 */
+  color: white;
+}
+
+.overlay-duplicate {
+  background-color: rgba(234, 179, 8, 0.95); /* Tailwind yellow-500 */
+  color: white;
+}
+
+/* Animated Progress Bar */
+.progress-bar-container {
+  width: 100%;
+  background-color: #e5e7eb;
+  border-radius: 9999px;
+  overflow: hidden;
+  height: 1.5rem;
+}
+
+.progress-bar-fill {
+  height: 100%;
+  background-color: var(--kbs-accent);
+  transition: width 0.5s ease-in-out;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 0.75rem;
+  font-weight: bold;
+  white-space: nowrap;
+}
+
+/* Toggle Switch */
+.toggle-checkbox:checked {
+  right: 0;
+  border-color: #f97316; /* orange-500 for LEO */
+}
+.toggle-checkbox:checked + .toggle-label {
+  background-color: #f97316;
+}
+
+/* Glassmorphism utility */
+.glass {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+/* Hidden iframe for printing */
+#print-iframe {
+  position: absolute;
+  width: 0;
+  height: 0;
+  border: none;
+  visibility: hidden;
+}

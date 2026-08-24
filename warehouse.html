@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KBS | شاشة المخزن المجمع (Bulk)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="css/styles.css">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <!-- Libraries for Exporting -->
+    <script src="https://unpkg.com/xlsx/dist/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+</head>
+<body class="bg-gray-100 min-h-screen">
+
+    <!-- Header -->
+    <nav class="bg-purple-900 text-white shadow-sm border-b border-purple-800">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <div class="flex items-center">
+                    <i data-lucide="warehouse" class="text-purple-300 w-8 h-8 ml-2"></i>
+                    <span class="font-bold text-xl font-tajawal">شاشة السحب والتجميع</span>
+                </div>
+                <div class="flex items-center space-x-4 space-x-reverse">
+                    <span id="userNameDisplay" class="font-medium text-purple-200"></span>
+                    <button id="logoutBtn" class="text-red-400 hover:text-red-300 p-2 rounded-md transition">
+                        <i data-lucide="log-out" class="w-5 h-5"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        
+        <div class="bg-white rounded-xl shadow-sm border p-6 mb-8">
+            <h2 class="text-xl font-bold text-gray-800 mb-4 flex items-center">
+                <i data-lucide="filter" class="w-6 h-6 ml-2 text-purple-600"></i> فلترة قوائم السحب
+            </h2>
+            <div class="flex flex-wrap gap-4 items-end">
+                <div class="flex-1 min-w-[200px]">
+                    <label class="block text-sm font-medium text-gray-700">تصفية حسب العامل (Per-Bulk):</label>
+                    <select id="workerFilter" class="mt-1 block w-full pl-3 pr-10 py-2 border-gray-300 rounded-md focus:ring-purple-500 focus:border-purple-500 sm:text-sm border">
+                        <option value="ALL">Big Bulk (الكل)</option>
+                        <!-- Populated by JS -->
+                    </select>
+                </div>
+                <div class="flex gap-2">
+                    <button id="exportExcelBtn" class="bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700 transition flex items-center shadow-sm">
+                        <i data-lucide="file-spreadsheet" class="w-4 h-4 ml-2"></i> تصدير Excel
+                    </button>
+                    <button id="exportPdfBtn" class="bg-red-600 text-white py-2 px-4 rounded-md hover:bg-red-700 transition flex items-center shadow-sm">
+                        <i data-lucide="file-text" class="w-4 h-4 ml-2"></i> تصدير PDF
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-xl shadow-sm border overflow-hidden">
+            <div class="px-6 py-4 border-b bg-gray-50 flex justify-between items-center">
+                <h3 class="text-lg font-bold text-gray-800">قائمة البضائع (Pick List)</h3>
+                <span id="totalItemsBadge" class="bg-purple-100 text-purple-800 text-xs font-medium px-2.5 py-0.5 rounded-full border border-purple-200">
+                    إجمالي المنتجات: 0
+                </span>
+            </div>
+            
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200 text-sm">
+                    <thead class="bg-gray-100">
+                        <tr>
+                            <th scope="col" class="px-6 py-3 text-right font-medium text-gray-500 uppercase tracking-wider">اسم المنتج (SKU)</th>
+                            <th scope="col" class="px-6 py-3 text-right font-medium text-gray-500 uppercase tracking-wider">الكمية المطلوبة</th>
+                            <th scope="col" class="px-6 py-3 text-right font-medium text-gray-500 uppercase tracking-wider">حالة / ملاحظات</th>
+                        </tr>
+                    </thead>
+                    <tbody id="bulkTableBody" class="bg-white divide-y divide-gray-200">
+                        <!-- Populated by JS -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </main>
+
+    <script type="module">
+        import { AuthService } from './js/auth.js';
+        import { BulkEngine } from './js/bulk-engine.js';
+        import { db } from './js/config.js';
+        import { ref, onValue } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
+
+        lucide.createIcons();
+
+        // 1. Auth Check
+        const user = AuthService.requireRole(['WAREHOUSE', 'ADMIN']); // Admin can also view this
+        document.getElementById('userNameDisplay').textContent = user.name;
+        document.getElementById('logoutBtn').addEventListener('click', () => AuthService.logout());
+
+        let allOrders = [];
+        let aggregatedList = [];
+
+        // 2. Fetch Orders & Populate Filter
+        const ordersRef = ref(db, 'orders');
+        onValue(ordersRef, (snapshot) => {
+            const data = snapshot.val() || {};
+            allOrders = Object.values(data);
+            
+            updateWorkerFilter();
+            renderPickList();
+        });
+
+        function updateWorkerFilter() {
+            const select = document.getElementById('workerFilter');
+            const currentVal = select.value;
+            
+            // Extract unique assigned workers
+            const workers = new Map();
+            allOrders.forEach(o => {
+                if (o.assignedTo) {
+                    workers.set(o.assignedTo, o.assignedName || o.assignedTo);
+                }
+            });
+
+            select.innerHTML = '<option value="ALL">Big Bulk (الكل)</option>';
+            workers.forEach((name, uid) => {
+                const opt = document.createElement('option');
+                opt.value = uid;
+                opt.textContent = name;
+                select.appendChild(opt);
+            });
+            
+            if (workers.has(currentVal)) {
+                select.value = currentVal;
+            }
+        }
+
+        document.getElementById('workerFilter').addEventListener('change', renderPickList);
+
+        function renderPickList() {
+            const filterUid = document.getElementById('workerFilter').value;
+            
+            // Only include Pending orders (not yet shipped) for picking
+            let filteredOrders = allOrders.filter(o => o.status !== 'Shipped');
+            
+            if (filterUid !== 'ALL') {
+                filteredOrders = filteredOrders.filter(o => o.assignedTo === filterUid);
+            }
+
+            aggregatedList = BulkEngine.aggregateSKUs(filteredOrders);
+            
+            const tbody = document.getElementById('bulkTableBody');
+            tbody.innerHTML = '';
+            
+            let totalQty = 0;
+            
+            aggregatedList.forEach(item => {
+                totalQty += item.quantity;
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${item.name}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-bold">${item.quantity}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-red-600 font-medium">${item.condition || '-'}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            document.getElementById('totalItemsBadge').textContent = `إجمالي القطع: ${totalQty}`;
+        }
+
+        // Export Actions
+        document.getElementById('exportExcelBtn').addEventListener('click', () => {
+            if(aggregatedList.length > 0) {
+                BulkEngine.exportToExcel(aggregatedList, `Bulk_List_${new Date().toLocaleDateString()}.xlsx`);
+            }
+        });
+
+        document.getElementById('exportPdfBtn').addEventListener('click', () => {
+            if(aggregatedList.length > 0) {
+                BulkEngine.exportToPDF(aggregatedList, `Bulk_List_${new Date().toLocaleDateString()}.pdf`);
+            }
+        });
+
+    </script>
+</body>
+</html>
