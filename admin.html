@@ -245,14 +245,9 @@
                     <button id="btnExportRepExcel" class="bg-green-600 text-white px-3 py-1.5 rounded-lg text-sm hover:bg-green-700 font-bold flex items-center gap-1 shadow-sm">
                         <i data-lucide="file-spreadsheet" class="w-4 h-4"></i> إكسيل
                     </button>
-                    <div class="flex rounded-lg shadow-sm border overflow-hidden">
-                        <button id="btnExportAuditPdf" class="bg-amber-500 text-white px-3 py-1.5 text-sm hover:bg-amber-600 font-bold flex items-center gap-1 border-r border-amber-600" title="تحميل الجرد الداخلي (PDF)">
-                            <i data-lucide="clipboard-check" class="w-4 h-4"></i>
-                        </button>
-                        <button id="btnPrintAudit" class="bg-slate-800 text-white px-3 py-1.5 text-sm hover:bg-slate-900 font-bold flex items-center gap-1" title="طباعة الجرد الداخلي">
-                            <i data-lucide="printer" class="w-4 h-4"></i> جرد داخلي
-                        </button>
-                    </div>
+                    <button id="btnExportAuditPdf" class="bg-rose-600 text-white px-3 py-1.5 rounded-lg text-sm hover:bg-rose-700 font-bold flex items-center gap-1 shadow-sm" title="تحميل الجرد الداخلي (PDF)">
+                        <i data-lucide="file-text" class="w-4 h-4"></i> تحميل PDF
+                    </button>
                 </div>
             </div>
 
@@ -1509,7 +1504,6 @@
         };
 
         document.getElementById('btnExportAuditPdf').addEventListener('click', () => window.generateInternalAuditPDF('download'));
-        document.getElementById('btnPrintAudit').addEventListener('click', () => window.generateInternalAuditPDF('print'));
 
         const ALL_ARCHIVE_PATHS = [
             'artifacts/korean-beautys-dispatch/archive/orders',
