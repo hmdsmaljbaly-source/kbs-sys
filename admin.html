@@ -85,26 +85,48 @@
                     </h2>
                     <p class="text-gray-500 text-sm mt-1">التحكم الكامل ببيانات الطرود وتفعيل علامة الحظر (LEO)</p>
                 </div>
-                <div class="flex flex-wrap items-center gap-3 w-full xl:w-auto">
-                    <select id="filter-status" class="py-2.5 px-3 border border-gray-200 rounded-xl text-sm font-bold text-gray-700 bg-gray-50 hover:bg-white focus:ring-2 focus:ring-blue-500 transition-all">
-                        <option value="all">الكل (All Statuses)</option>
-                        <option value="Shipped">تم الشحن (Shipped)</option>
-                        <option value="Pending">قيد الانتظار (Pending)</option>
-                    </select>
-                    <select id="filter-leo" class="py-2.5 px-3 border border-gray-200 rounded-xl text-sm font-bold text-gray-700 bg-gray-50 hover:bg-white focus:ring-2 focus:ring-blue-500 transition-all">
-                        <option value="all">الكل (All LEO)</option>
-                        <option value="leo_active">حظر LEO (Active)</option>
-                        <option value="leo_normal">عادي (Normal)</option>
-                    </select>
-                    <div class="relative flex-1 sm:w-72">
-                        <input type="text" id="searchOrders" placeholder="ابحث برقم الأوردر، التتبع، المنتجات..." class="w-full pl-3 pr-10 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 transition-all shadow-sm">
-                        <i data-lucide="search" class="w-4 h-4 text-gray-400 absolute right-3 top-3"></i>
-                    </div>
+                
+                <!-- Action Toolbar -->
+                <div class="flex gap-2 flex-wrap">
+                    <button onclick="document.getElementById('manualOrderModal').classList.remove('hidden')" class="bg-blue-600 text-white px-4 py-2 text-sm rounded-lg hover:bg-blue-700 transition font-bold shadow-sm flex items-center gap-2">
+                        <i data-lucide="plus" class="w-4 h-4"></i> إضافة أوردر يدوي
+                    </button>
+                    <button onclick="closeDayAction()" class="bg-amber-100 text-amber-700 px-4 py-2 text-sm rounded-lg hover:bg-amber-200 transition font-bold shadow-sm flex items-center gap-2">
+                        <i data-lucide="archive" class="w-4 h-4"></i> تقفيل اليوم (حذف المشحون فقط)
+                    </button>
+                    <button onclick="clearOperationalView()" class="bg-red-100 text-red-700 px-4 py-2 text-sm rounded-lg hover:bg-red-200 transition font-bold shadow-sm flex items-center gap-2">
+                        <i data-lucide="trash-2" class="w-4 h-4"></i> تصفير الأوردرات بالكامل
+                    </button>
                 </div>
             </div>
-            
-            <!-- Live Monitor Stats Mini -->
-            <div id="workersMonitor" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6"></div>
+
+            <!-- Top KPI Stats Row -->
+            <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6" id="topKpisContainer">
+                <!-- Injected via JS -->
+            </div>
+
+            <!-- Worker Progress Cards Strip -->
+            <div id="workerProgressStrip" class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-3 mb-6">
+                <!-- Injected via JS -->
+            </div>
+
+            <!-- Filter Toolbar -->
+            <div class="flex flex-wrap items-center gap-3 w-full mb-4 bg-white p-3 rounded-xl border shadow-sm">
+                <select id="filter-status" class="py-2 px-3 border border-gray-200 rounded-lg text-sm font-bold text-gray-700 bg-gray-50 hover:bg-white focus:ring-2 focus:ring-blue-500 transition-all">
+                    <option value="all">الكل (All Statuses)</option>
+                    <option value="Shipped">تم الشحن (Shipped)</option>
+                    <option value="Pending">قيد الانتظار (Pending)</option>
+                </select>
+                <select id="filter-leo" class="py-2 px-3 border border-gray-200 rounded-lg text-sm font-bold text-gray-700 bg-gray-50 hover:bg-white focus:ring-2 focus:ring-blue-500 transition-all">
+                    <option value="all">الكل (All LEO)</option>
+                    <option value="leo_active">حظر LEO (Active)</option>
+                    <option value="leo_normal">عادي (Normal)</option>
+                </select>
+                <div class="relative flex-1 sm:w-72">
+                    <input type="text" id="searchOrders" placeholder="ابحث برقم الأوردر، التتبع، المنتجات..." class="w-full pl-3 pr-10 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 transition-all">
+                    <i data-lucide="search" class="w-4 h-4 text-gray-400 absolute right-3 top-2.5"></i>
+                </div>
+            </div>
 
             <div class="bg-white rounded-xl shadow-sm border overflow-hidden">
                 <div class="overflow-x-auto min-h-[60vh]">
@@ -114,6 +136,7 @@
                                 <th class="p-4 font-bold border-b border-gray-100">رقم الأوردر</th>
                                 <th class="p-4 font-bold border-b border-gray-100">رقم التتبع</th>
                                 <th class="p-4 font-bold border-b border-gray-100">التحصيل (COD)</th>
+                                <th class="p-4 font-bold border-b border-gray-100">العامل المعين</th>
                                 <th class="p-4 font-bold border-b border-gray-100">المنتجات (Products)</th>
                                 <th class="p-4 font-bold border-b border-gray-100">الملاحظات</th>
                                 <th class="p-4 font-bold border-b border-gray-100 text-center">الحالة</th>
@@ -164,55 +187,88 @@
         <!-- View 3: Reports -->
         <section id="view-reports" class="view-section">
             <div class="flex justify-between items-center mb-6">
-                <h2 class="text-2xl font-bold text-gray-800">التقارير وسجل البيانات</h2>
+                <h2 class="text-2xl font-bold text-gray-800 flex items-center gap-2">
+                    <i data-lucide="bar-chart-2" class="text-blue-600 w-6 h-6"></i> التقارير وسجل البيانات والإغلاق
+                </h2>
                 <div class="flex gap-2">
-                    <button onclick="document.getElementById('archiveModal').classList.remove('hidden')" class="bg-red-100 text-red-700 px-4 py-2 rounded-lg text-sm hover:bg-red-200 font-bold flex items-center gap-2">
+                    <button onclick="document.getElementById('archiveModal').classList.remove('hidden')" class="bg-red-100 text-red-700 px-4 py-2 rounded-lg text-sm hover:bg-red-200 font-bold flex items-center gap-2 shadow-sm">
                         <i data-lucide="trash-2" class="w-4 h-4"></i> إدارة الأرشيف
                     </button>
                 </div>
             </div>
 
-            <!-- Filters -->
+            <!-- Global Date Filter (applies to all cards) -->
             <div class="bg-white rounded-xl shadow-sm border p-4 mb-6 flex flex-wrap gap-4 items-end">
                 <div>
-                    <label class="block text-xs font-bold text-gray-600 mb-1">فلتر سريع</label>
-                    <div class="flex bg-gray-100 rounded-lg p-1">
-                        <button onclick="setReportFilter('today')" class="report-filter-btn active bg-white shadow-sm px-3 py-1 text-sm rounded-md font-medium text-gray-700 transition" data-filter="today">اليوم</button>
-                        <button onclick="setReportFilter('week')" class="report-filter-btn px-3 py-1 text-sm rounded-md font-medium text-gray-700 hover:bg-white transition" data-filter="week">الأسبوع</button>
-                        <button onclick="setReportFilter('all')" class="report-filter-btn px-3 py-1 text-sm rounded-md font-medium text-gray-700 hover:bg-white transition" data-filter="all">الكل</button>
+                    <label class="block text-xs font-bold text-gray-600 mb-1">تحديد نطاق زمني للتقارير</label>
+                    <div class="flex gap-2">
+                        <input type="date" id="repStart" class="border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:border-blue-500 font-bold text-gray-700">
+                        <span class="self-center text-gray-400 font-bold">إلى</span>
+                        <input type="date" id="repEnd" class="border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:border-blue-500 font-bold text-gray-700">
                     </div>
                 </div>
-                <div>
-                    <label class="block text-xs font-bold text-gray-600 mb-1">من تاريخ</label>
-                    <input type="date" id="repStart" class="border border-gray-300 rounded-lg px-3 py-1.5 text-sm outline-none focus:border-blue-500">
-                </div>
-                <div>
-                    <label class="block text-xs font-bold text-gray-600 mb-1">إلى تاريخ</label>
-                    <input type="date" id="repEnd" class="border border-gray-300 rounded-lg px-3 py-1.5 text-sm outline-none focus:border-blue-500">
-                </div>
-                <div class="flex gap-2 mr-auto">
-                    <button id="btnExportRepExcel" class="bg-green-600 text-white px-3 py-1.5 rounded-lg text-sm hover:bg-green-700 flex items-center gap-1 shadow-sm"><i data-lucide="file-spreadsheet" class="w-4 h-4"></i> إكسيل</button>
-                    <button id="btnExportManifestPdf" class="bg-blue-800 text-white px-3 py-1.5 rounded-lg text-sm hover:bg-blue-900 flex items-center gap-1 shadow-sm"><i data-lucide="file-text" class="w-4 h-4"></i> Courier Manifest (PDF)</button>
-                    <button id="btnExportAuditPdf" class="bg-gray-800 text-white px-3 py-1.5 rounded-lg text-sm hover:bg-gray-900 flex items-center gap-1 shadow-sm"><i data-lucide="archive" class="w-4 h-4"></i> Internal Audit (PDF)</button>
+                <div class="mr-auto self-center text-sm font-bold text-gray-500" id="reportsCountStatus">
+                    جاري تحميل الأرشيف...
                 </div>
             </div>
 
-            <!-- Historical Table -->
-            <div class="bg-white rounded-xl shadow-sm border overflow-hidden">
-                <div class="overflow-x-auto h-[60vh] overflow-y-auto">
-                    <table class="min-w-full divide-y divide-gray-200 text-sm">
-                        <thead class="bg-gray-50 sticky top-0 shadow-sm">
-                            <tr>
-                                <th class="px-4 py-3 text-right font-bold text-gray-500">الأوردر / التتبع</th>
-                                <th class="px-4 py-3 text-right font-bold text-gray-500">العامل</th>
-                                <th class="px-4 py-3 text-right font-bold text-gray-500">تاريخ الإسكان</th>
-                                <th class="px-4 py-3 text-right font-bold text-gray-500">تاريخ الرفع</th>
-                                <th class="px-4 py-3 text-right font-bold text-gray-500">الحالة</th>
-                            </tr>
-                        </thead>
-                        <tbody id="reportsTableBody" class="bg-white divide-y divide-gray-200"></tbody>
-                    </table>
+            <!-- Three Structured Cards -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                
+                <!-- Card 1: Courier Manifest -->
+                <div class="bg-white rounded-xl shadow-sm border overflow-hidden flex flex-col hover:border-red-300 transition-colors">
+                    <div class="p-5 border-b bg-red-50/50">
+                        <h3 class="text-lg font-bold text-red-800 flex items-center gap-2 mb-2"><i data-lucide="truck" class="w-5 h-5"></i> مانيفست تسليم المندوب الرسمي</h3>
+                        <p class="text-sm text-red-600/80">المستند الرسمي الذي يحتوي على الأرقام التتبعية، الشركة الناقلة، التوقيعات. (للمشحون فقط)</p>
+                    </div>
+                    <div class="p-5 flex flex-col gap-3 flex-1 justify-center">
+                        <button id="btnExportManifestPdf" class="w-full bg-red-600 text-white py-3 rounded-lg text-sm font-bold hover:bg-red-700 transition flex items-center justify-center gap-2 shadow-sm">
+                            <i data-lucide="download" class="w-4 h-4"></i> تحميل PDF
+                        </button>
+                        <button id="btnPrintManifest" class="w-full bg-slate-800 text-white py-3 rounded-lg text-sm font-bold hover:bg-slate-900 transition flex items-center justify-center gap-2 shadow-sm">
+                            <i data-lucide="printer" class="w-4 h-4"></i> طباعة مباشرة
+                        </button>
+                    </div>
                 </div>
+
+                <!-- Card 2: Internal Audit -->
+                <div class="bg-white rounded-xl shadow-sm border overflow-hidden flex flex-col hover:border-amber-300 transition-colors">
+                    <div class="p-5 border-b bg-amber-50/50">
+                        <h3 class="text-lg font-bold text-amber-800 flex items-center gap-2 mb-2"><i data-lucide="clipboard-check" class="w-5 h-5"></i> تقرير الإغلاق والجرد الداخلي</h3>
+                        <p class="text-sm text-amber-600/80">مستند جرد داخلي شامل (المنتجات، التحصيل، الملاحظات وتفاصيل الإسكان والتغليف).</p>
+                    </div>
+                    <div class="p-5 flex flex-col gap-3 flex-1 justify-center">
+                        <button id="btnExportAuditPdf" class="w-full bg-amber-500 text-white py-3 rounded-lg text-sm font-bold hover:bg-amber-600 transition flex items-center justify-center gap-2 shadow-sm">
+                            <i data-lucide="download" class="w-4 h-4"></i> تحميل PDF الداخلي
+                        </button>
+                        <button id="btnPrintAudit" class="w-full bg-slate-800 text-white py-3 rounded-lg text-sm font-bold hover:bg-slate-900 transition flex items-center justify-center gap-2 shadow-sm">
+                            <i data-lucide="printer" class="w-4 h-4"></i> طباعة داخلي
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Card 3: Filtered Excel -->
+                <div class="bg-gray-900 rounded-xl shadow-sm border border-gray-800 overflow-hidden flex flex-col">
+                    <div class="p-5 border-b border-gray-800">
+                        <h3 class="text-lg font-bold text-white flex items-center gap-2 mb-2"><i data-lucide="file-spreadsheet" class="w-5 h-5 text-green-400"></i> تصدير كشوفات شيت الإكسيل</h3>
+                        <p class="text-sm text-gray-400">تصدير بيانات الأرشيف والأوردرات إلى شيت Excel ديناميكي بناءً على الفلتر.</p>
+                    </div>
+                    <div class="p-5 flex flex-col gap-4 flex-1 justify-center">
+                        <div>
+                            <label class="block text-xs font-bold text-gray-400 mb-2">تصفية حسب الحالة</label>
+                            <select id="exportExcelStatus" class="w-full bg-gray-800 border-gray-700 text-white rounded-lg p-2.5 text-sm font-bold focus:ring-2 focus:ring-green-500 outline-none">
+                                <option value="all">كافة الأوردرات (All)</option>
+                                <option value="Shipped">المشحون فقط (Shipped)</option>
+                                <option value="Pending">المعلق قيد الانتظار (Pending)</option>
+                                <option value="Returns">المرتجعات فقط (Returns)</option>
+                            </select>
+                        </div>
+                        <button id="btnExportRepExcel" class="w-full bg-green-600 text-white py-3 rounded-lg text-sm font-bold hover:bg-green-700 transition flex items-center justify-center gap-2 shadow-sm mt-auto">
+                            <i data-lucide="download" class="w-4 h-4"></i> تحميل شيت إكسيل
+                        </button>
+                    </div>
+                </div>
+
             </div>
         </section>
 
@@ -229,6 +285,39 @@
                     <button onclick="document.getElementById('archiveModal').classList.add('hidden')" class="px-4 py-2 bg-gray-200 rounded-lg text-gray-800">إلغاء</button>
                     <button id="confirmArchiveBtn" class="px-4 py-2 bg-red-600 rounded-lg text-white font-bold hover:bg-red-700">تأكيد وتنفيذ</button>
                 </div>
+            </div>
+        </div>
+        
+        <!-- Manual Order Modal -->
+        <div id="manualOrderModal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 z-50 flex items-center justify-center">
+            <div class="bg-white rounded-xl shadow-xl w-full max-w-md p-6">
+                <h3 class="text-lg font-bold text-gray-800 mb-4 border-b pb-2 flex items-center gap-2"><i data-lucide="plus"></i> إضافة أوردر يدوي</h3>
+                <form onsubmit="handleManualOrder(event)" class="space-y-4">
+                    <div>
+                        <label class="block text-xs font-bold text-gray-600 mb-1">رقم الأوردر (Order ID)</label>
+                        <input type="text" id="manualOrderId" placeholder="#117100" class="w-full border rounded-lg p-2 focus:ring-blue-500 outline-none" required>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-600 mb-1">رقم التتبع (Tracking)</label>
+                        <input type="text" id="manualTracking" placeholder="888075" class="w-full border rounded-lg p-2 focus:ring-blue-500 outline-none" required>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-600 mb-1">التحصيل (COD)</label>
+                        <input type="number" id="manualCod" placeholder="1039.05" step="0.01" class="w-full border rounded-lg p-2 focus:ring-blue-500 outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-600 mb-1">المنتجات (Products)</label>
+                        <input type="text" id="manualProducts" placeholder="مثال: المنتج أ x 2" class="w-full border rounded-lg p-2 focus:ring-blue-500 outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-600 mb-1">ملاحظات (اختياري)</label>
+                        <input type="text" id="manualNote" placeholder="..." class="w-full border rounded-lg p-2 focus:ring-blue-500 outline-none">
+                    </div>
+                    <div class="flex justify-end gap-2 mt-6">
+                        <button type="button" onclick="document.getElementById('manualOrderModal').classList.add('hidden')" class="px-4 py-2 bg-gray-200 rounded-lg text-gray-800 text-sm font-bold">إلغاء</button>
+                        <button type="submit" class="px-4 py-2 bg-blue-600 rounded-lg text-white font-bold hover:bg-blue-700 text-sm flex items-center gap-2"><i data-lucide="save" class="w-4 h-4"></i> حفظ الأوردر</button>
+                    </div>
+                </form>
             </div>
         </div>
 
@@ -329,6 +418,7 @@
 
         // 2. State
         let allOrders = {};
+        let archivedOrders = {};
         let allUsers = {};
 
         // 3. Listeners
@@ -338,14 +428,171 @@
             renderWorkerCards();
         });
 
-        onValue(ref(db, ORDERS_PATH), (snapshot) => {
-            allOrders = snapshot.val() || {};
-            renderOrdersTable();
-            renderLiveMonitor();
-            renderReportsTable();
+        onValue(ref(db, 'artifacts/korean-beautys-dispatch/archive/orders'), (snapshot) => {
+            archivedOrders = snapshot.val() || {};
+            renderReportsStatus();
         });
 
-        // 4. View 1: Orders
+        onValue(ref(db, ORDERS_PATH), (snapshot) => {
+            allOrders = snapshot.val() || {};
+            renderKPIs();
+            renderOrdersTable();
+            renderReportsStatus();
+        });
+
+        // 4. View 1: Orders & KPIs
+        function renderKPIs() {
+            const orders = Object.values(allOrders);
+            const total = orders.length;
+            const shipped = orders.filter(o => o.status === 'Shipped').length;
+            const pending = total - shipped;
+            const codSum = orders.filter(o => o.status === 'Shipped').reduce((acc, o) => acc + (parseFloat(o.cod) || 0), 0);
+
+            // 1. Render Top Stats
+            const kpiContainer = document.getElementById('topKpisContainer');
+            if (kpiContainer) {
+                kpiContainer.innerHTML = `
+                    <div class="bg-white p-4 rounded-xl border shadow-sm flex items-center justify-between">
+                        <div>
+                            <p class="text-sm text-gray-500 font-bold mb-1">إجمالي أوردرات اليوم</p>
+                            <h3 class="text-2xl font-black text-gray-800">${total}</h3>
+                        </div>
+                        <div class="p-3 bg-blue-50 text-blue-600 rounded-lg"><i data-lucide="package" class="w-6 h-6"></i></div>
+                    </div>
+                    <div class="bg-white p-4 rounded-xl border shadow-sm flex items-center justify-between">
+                        <div>
+                            <p class="text-sm text-gray-500 font-bold mb-1">تم شحنها بنجاح</p>
+                            <h3 class="text-2xl font-black text-green-600">${shipped}</h3>
+                        </div>
+                        <div class="p-3 bg-green-50 text-green-600 rounded-lg"><i data-lucide="check-circle" class="w-6 h-6"></i></div>
+                    </div>
+                    <div class="bg-white p-4 rounded-xl border shadow-sm flex items-center justify-between">
+                        <div>
+                            <p class="text-sm text-gray-500 font-bold mb-1">متبقي قيد الانتظار</p>
+                            <h3 class="text-2xl font-black text-amber-500">${pending}</h3>
+                        </div>
+                        <div class="p-3 bg-amber-50 text-amber-500 rounded-lg"><i data-lucide="clock" class="w-6 h-6"></i></div>
+                    </div>
+                    <div class="bg-white p-4 rounded-xl border shadow-sm flex items-center justify-between">
+                        <div>
+                            <p class="text-sm text-gray-500 font-bold mb-1">إجمالي التحصيل (شُحن)</p>
+                            <h3 class="text-2xl font-black text-red-600" dir="ltr">${codSum.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})} ج</h3>
+                        </div>
+                        <div class="p-3 bg-red-50 text-red-600 rounded-lg"><i data-lucide="dollar-sign" class="w-6 h-6"></i></div>
+                    </div>
+                `;
+            }
+
+            // 2. Render Worker Progress
+            const progressStrip = document.getElementById('workerProgressStrip');
+            if (progressStrip) {
+                progressStrip.innerHTML = '';
+                // Get all workers assigned to orders today
+                const workersMap = {};
+                orders.forEach(o => {
+                    if(o.assignedTo) {
+                        if(!workersMap[o.assignedTo]) workersMap[o.assignedTo] = { name: o.assignedName || o.assignedTo, total: 0, shipped: 0 };
+                        workersMap[o.assignedTo].total++;
+                        if(o.status === 'Shipped') workersMap[o.assignedTo].shipped++;
+                    }
+                });
+
+                Object.values(workersMap).forEach(w => {
+                    const percent = w.total === 0 ? 0 : Math.round((w.shipped / w.total) * 100);
+                    progressStrip.innerHTML += `
+                        <div class="bg-white rounded-xl border p-3 shadow-sm">
+                            <div class="flex justify-between items-center mb-2">
+                                <span class="text-sm font-bold text-gray-700">${w.name}</span>
+                                <span class="text-xs font-bold text-gray-500">${w.shipped} / ${w.total}</span>
+                            </div>
+                            <div class="w-full bg-gray-200 rounded-full h-2">
+                                <div class="bg-purple-600 h-2 rounded-full transition-all duration-500" style="width: ${percent}%"></div>
+                            </div>
+                            <div class="text-right mt-1 text-[10px] text-gray-400 font-bold">${percent}%</div>
+                        </div>
+                    `;
+                });
+            }
+            lucide.createIcons();
+        }
+
+        window.handleManualOrder = async function(e) {
+            e.preventDefault();
+            const orderId = document.getElementById('manualOrderId').value.trim();
+            const tracking = document.getElementById('manualTracking').value.trim();
+            const cod = document.getElementById('manualCod').value.trim() || 0;
+            const products = document.getElementById('manualProducts').value.trim();
+            const notes = document.getElementById('manualNote').value.trim();
+            
+            const parsed = BulkEngine.parseDescriptionItems(products);
+            const nowIso = new Date().toISOString();
+            
+            const newOrder = {
+                orderId: orderId,
+                trackingNumber: tracking,
+                cod: parseFloat(cod),
+                products: products,
+                parsedProducts: parsed,
+                notes: notes,
+                assignedTo: '',
+                assignedName: '',
+                batchId: '',
+                status: 'Pending',
+                isLeo: false,
+                createdAt: nowIso
+            };
+            
+            try {
+                await set(ref(db, `artifacts/korean-beautys-dispatch/orders/WAYBILL_${tracking}`), newOrder);
+                document.getElementById('manualOrderModal').classList.add('hidden');
+                e.target.reset();
+                showToast('تم إضافة الأوردر اليدوي بنجاح');
+            } catch(err) {
+                console.error(err);
+                alert("حدث خطأ أثناء الحفظ");
+            }
+        };
+
+        window.closeDayAction = async function() {
+            if(!confirm("هل أنت متأكد من تقفيل اليوم؟ سيتم أرشفة وإخفاء الأوردرات المشحونة فقط.")) return;
+            try {
+                const orders = Object.entries(allOrders);
+                const shippedOrders = orders.filter(([k, o]) => o.status === 'Shipped');
+                if(shippedOrders.length === 0) return alert("لا يوجد أوردرات مشحونة لأرشفتها.");
+                
+                const updates = {};
+                shippedOrders.forEach(([k, o]) => {
+                    updates[`artifacts/korean-beautys-dispatch/archive/orders/${k}`] = o;
+                    updates[`artifacts/korean-beautys-dispatch/orders/${k}`] = null; // delete from active
+                });
+                
+                await update(ref(db), updates);
+                showToast(`تم أرشفة ${shippedOrders.length} أوردر مشحون بنجاح`);
+            } catch(err) {
+                console.error(err);
+                alert("حدث خطأ أثناء الأرشفة");
+            }
+        };
+
+        window.clearOperationalView = async function() {
+            if(!confirm("تحذير: سيتم نقل كافة الأوردرات الحالية (مشحونة أو قيد الانتظار) إلى الأرشيف وتصفير الشاشة. هل أنت متأكد؟")) return;
+            try {
+                const orders = Object.entries(allOrders);
+                if(orders.length === 0) return alert("لا يوجد أوردرات لتصفيرها.");
+                
+                const updates = {};
+                orders.forEach(([k, o]) => {
+                    updates[`artifacts/korean-beautys-dispatch/archive/orders/${k}`] = o;
+                    updates[`artifacts/korean-beautys-dispatch/orders/${k}`] = null;
+                });
+                
+                await update(ref(db), updates);
+                showToast(`تم تصفير ونقل ${orders.length} أوردر إلى الأرشيف`);
+            } catch(err) {
+                console.error(err);
+                alert("حدث خطأ أثناء التصفير");
+            }
+        };
         function renderOrdersTable() {
             const tbody = document.getElementById('ordersTableBody');
             if(!tbody) return;
@@ -427,6 +674,9 @@
                     </td>
                     <td class="p-4 align-top border-b border-gray-100 text-right">
                         <div class="text-sm font-bold ${order.cod ? 'text-red-600' : 'text-gray-500'}">${order.cod || 'N/A'} ${order.cod ? 'ج.م' : ''}</div>
+                    </td>
+                    <td class="p-4 align-top border-b border-gray-100 w-32 text-right">
+                        <div class="text-sm font-bold text-gray-700">${order.assignedName || order.assignedTo || '-'}</div>
                     </td>
                     <td class="p-4 align-top border-b border-gray-100 w-1/3 text-right">
                         ${productsDisplay}
@@ -702,59 +952,36 @@
         };
 
         // 6. View 3: Reports
-        let activeReportFilter = 'today';
-        window.setReportFilter = function(filter) {
-            activeReportFilter = filter;
-            document.querySelectorAll('.report-filter-btn').forEach(btn => {
-                if(btn.dataset.filter === filter) {
-                    btn.classList.add('bg-white', 'shadow-sm'); btn.classList.remove('hover:bg-white');
-                } else {
-                    btn.classList.remove('bg-white', 'shadow-sm'); btn.classList.add('hover:bg-white');
-                }
-            });
-            renderReportsTable();
-        };
-
         function getFilteredReports() {
+            const combinedOrders = { ...archivedOrders, ...allOrders };
+            const ordersArray = Object.values(combinedOrders);
+            
             let start = null, end = null;
-            const now = new Date();
-            if (activeReportFilter === 'today') {
-                start = new Date(now.setHours(0,0,0,0)); end = new Date(now.setHours(23,59,59,999));
-            } else if (activeReportFilter === 'week') {
-                const firstDay = new Date(now.setDate(now.getDate() - now.getDay()));
-                start = new Date(firstDay.setHours(0,0,0,0)); end = new Date(); end.setHours(23,59,59,999);
-            } else if (activeReportFilter === 'custom') {
-                const s = document.getElementById('repStart').value; const e = document.getElementById('repEnd').value;
-                if(s) start = new Date(s); if(e) { end = new Date(e); end.setHours(23,59,59,999); }
-            }
-            return Object.values(allOrders).filter(o => {
+            const s = document.getElementById('repStart').value; 
+            const e = document.getElementById('repEnd').value;
+            if(s) start = new Date(s); 
+            if(e) { end = new Date(e); end.setHours(23,59,59,999); }
+            
+            const statusFilter = document.getElementById('exportExcelStatus') ? document.getElementById('exportExcelStatus').value : 'all';
+
+            return ordersArray.filter(o => {
                 const dateStr = o.scanTime || o.createdAt;
-                if (!start && !end) return true;
                 if (!dateStr) return false;
                 const d = new Date(dateStr);
-                return (!start || d >= start) && (!end || d <= end);
+                
+                const matchDate = (!start || d >= start) && (!end || d <= end);
+                const matchStatus = (statusFilter === 'all') || (o.status === statusFilter);
+                
+                return matchDate && matchStatus;
             });
         }
 
-        function renderReportsTable() {
-            const tbody = document.getElementById('reportsTableBody');
-            tbody.innerHTML = '';
-            const filtered = getFilteredReports();
-            filtered.forEach(o => {
-                const stat = o.status === 'Shipped' ? '<span class="text-green-600 font-bold">Shipped</span>' : '<span class="text-amber-500 font-bold">Pending</span>';
-                const sTime = o.scanTime ? new Date(o.scanTime).toLocaleString('ar-EG') : '-';
-                const cTime = o.createdAt ? new Date(o.createdAt).toLocaleString('ar-EG') : '-';
-                const tr = document.createElement('tr');
-                tr.innerHTML = `
-                    <td class="px-4 py-3 whitespace-nowrap text-sm font-bold text-gray-900">${o.trackingNumber}</td>
-                    <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-600">${o.assignedName || o.assignedTo}</td>
-                    <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-600">${sTime}</td>
-                    <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500">${cTime}</td>
-                    <td class="px-4 py-3 whitespace-nowrap text-sm">${stat}</td>
-                `;
-                tbody.appendChild(tr);
-            });
-        }
+        window.renderReportsStatus = function() {
+            const el = document.getElementById('reportsCountStatus');
+            if(!el) return;
+            const total = Object.keys(archivedOrders).length + Object.keys(allOrders).length;
+            el.innerHTML = `تم تحميل <span class="text-blue-600">${total}</span> أوردر (مدمج من الأرشيف والنشط)`;
+        };
         document.getElementById('repStart').addEventListener('change', () => setReportFilter('custom'));
         document.getElementById('repEnd').addEventListener('change', () => setReportFilter('custom'));
 
@@ -806,6 +1033,43 @@
             doc.save(`Courier_Manifest_${new Date().toISOString().split('T')[0]}.pdf`);
         });
 
+        document.getElementById('btnPrintManifest').addEventListener('click', () => {
+            const reports = getFilteredReports();
+            if(reports.length === 0) return alert('لا يوجد بيانات للطباعة');
+            
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF('p', 'pt', 'a4');
+            
+            doc.addFont('https://raw.githubusercontent.com/wsmariano/Cairo/master/Cairo-Regular.ttf', 'Cairo', 'normal');
+            doc.setFont('Cairo');
+            doc.setFontSize(18);
+            doc.text("Courier Manifest - Korean Beautys", 40, 40);
+            
+            doc.setFontSize(10);
+            doc.text(`Date: ${new Date().toLocaleDateString('en-GB')}`, 40, 60);
+            doc.text(`Total Orders: ${reports.length}`, 40, 75);
+
+            const tableData = reports.map((o, index) => [
+                index + 1,
+                o.trackingNumber || '-',
+                o.orderId || '-',
+                o.cod ? `${o.cod} EGP` : '0 EGP',
+                o.status === 'Shipped' ? 'YES' : 'NO'
+            ]);
+
+            doc.autoTable({
+                startY: 90,
+                head: [['#', 'Tracking Number', 'Order ID', 'COD Amount', 'Scanned/Shipped']],
+                body: tableData,
+                theme: 'grid',
+                styles: { font: 'helvetica', fontSize: 9 },
+                headStyles: { fillColor: [30, 58, 138] }
+            });
+
+            doc.autoPrint();
+            window.open(doc.output('bloburl'), '_blank');
+        });
+
         document.getElementById('btnExportAuditPdf').addEventListener('click', () => {
             const reports = getFilteredReports();
             if(reports.length === 0) return alert('لا يوجد بيانات للتصدير');
@@ -836,6 +1100,39 @@
             });
 
             doc.save(`Internal_Audit_${new Date().toISOString().split('T')[0]}.pdf`);
+        });
+
+        document.getElementById('btnPrintAudit').addEventListener('click', () => {
+            const reports = getFilteredReports();
+            if(reports.length === 0) return alert('لا يوجد بيانات للطباعة');
+            
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF('l', 'pt', 'a4');
+            
+            doc.addFont('https://raw.githubusercontent.com/wsmariano/Cairo/master/Cairo-Regular.ttf', 'Cairo', 'normal');
+            doc.setFont('Cairo');
+            doc.setFontSize(18);
+            doc.text("Internal Audit Report", 40, 40);
+            
+            const tableData = reports.map(o => [
+                o.trackingNumber || '-',
+                o.assignedName || '-',
+                o.status || '-',
+                o.scanTime ? new Date(o.scanTime).toLocaleString('en-GB') : 'NOT SCANNED',
+                o.notes || 'N/A'
+            ]);
+
+            doc.autoTable({
+                startY: 60,
+                head: [['Tracking #', 'Worker', 'Status', 'Scan Timestamp', 'Live Notes']],
+                body: tableData,
+                theme: 'striped',
+                styles: { font: 'helvetica', fontSize: 9 },
+                headStyles: { fillColor: [31, 41, 55] }
+            });
+
+            doc.autoPrint();
+            window.open(doc.output('bloburl'), '_blank');
         });
 
         document.getElementById('confirmArchiveBtn').addEventListener('click', async () => {
