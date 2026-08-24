@@ -96,11 +96,19 @@
                     <button onclick="document.getElementById('manualOrderModal').classList.remove('hidden')" class="bg-blue-600 text-white px-4 py-2 text-sm rounded-lg hover:bg-blue-700 transition font-bold shadow-sm flex items-center gap-2">
                         <i data-lucide="plus" class="w-4 h-4"></i> إضافة أوردر يدوي
                     </button>
+                    <div class="flex rounded-lg shadow-sm border overflow-hidden">
+                        <button id="btnExportManifestPdf" class="bg-red-600 text-white px-3 py-2 text-sm hover:bg-red-700 font-bold flex items-center gap-1 border-r border-red-700" title="تحميل مانيفست (PDF)">
+                            <i data-lucide="truck" class="w-4 h-4"></i>
+                        </button>
+                        <button id="btnPrintManifest" class="bg-slate-800 text-white px-3 py-2 text-sm hover:bg-slate-900 font-bold flex items-center gap-1" title="طباعة مانيفست تسليم المندوب">
+                            <i data-lucide="printer" class="w-4 h-4"></i> مانيفست المندوب
+                        </button>
+                    </div>
                     <button onclick="closeDayAction()" class="bg-amber-100 text-amber-700 px-4 py-2 text-sm rounded-lg hover:bg-amber-200 transition font-bold shadow-sm flex items-center gap-2">
-                        <i data-lucide="archive" class="w-4 h-4"></i> تقفيل اليوم (حذف المشحون فقط)
+                        <i data-lucide="archive" class="w-4 h-4"></i> تقفيل اليوم
                     </button>
                     <button onclick="clearOperationalView()" class="bg-red-100 text-red-700 px-4 py-2 text-sm rounded-lg hover:bg-red-200 transition font-bold shadow-sm flex items-center gap-2">
-                        <i data-lucide="trash-2" class="w-4 h-4"></i> تصفير الأوردرات بالكامل
+                        <i data-lucide="trash-2" class="w-4 h-4"></i> تصفير بالكامل
                     </button>
                 </div>
             </div>
@@ -235,14 +243,6 @@
                     <button id="btnExportRepExcel" class="bg-green-600 text-white px-3 py-1.5 rounded-lg text-sm hover:bg-green-700 font-bold flex items-center gap-1 shadow-sm">
                         <i data-lucide="file-spreadsheet" class="w-4 h-4"></i> إكسيل
                     </button>
-                    <div class="flex rounded-lg shadow-sm border overflow-hidden">
-                        <button id="btnExportManifestPdf" class="bg-red-600 text-white px-3 py-1.5 text-sm hover:bg-red-700 font-bold flex items-center gap-1 border-r border-red-700" title="تحميل مانيفست (PDF)">
-                            <i data-lucide="truck" class="w-4 h-4"></i>
-                        </button>
-                        <button id="btnPrintManifest" class="bg-slate-800 text-white px-3 py-1.5 text-sm hover:bg-slate-900 font-bold flex items-center gap-1" title="طباعة مانيفست">
-                            <i data-lucide="printer" class="w-4 h-4"></i> مانيفست
-                        </button>
-                    </div>
                     <div class="flex rounded-lg shadow-sm border overflow-hidden">
                         <button id="btnExportAuditPdf" class="bg-amber-500 text-white px-3 py-1.5 text-sm hover:bg-amber-600 font-bold flex items-center gap-1 border-r border-amber-600" title="تحميل الجرد الداخلي (PDF)">
                             <i data-lucide="clipboard-check" class="w-4 h-4"></i>
@@ -1291,8 +1291,8 @@
         });
 
         document.getElementById('btnExportManifestPdf').addEventListener('click', () => {
-            const reports = getFilteredReports();
-            if(reports.length === 0) return alert('لا يوجد بيانات للتصدير');
+            const reports = Object.values(allOrders).filter(o => o.status === 'Shipped');
+            if(reports.length === 0) return alert('لا يوجد أوردرات مشحونة اليوم للتصدير');
             
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF('p', 'pt', 'a4');
@@ -1300,35 +1300,35 @@
             doc.addFont('https://raw.githubusercontent.com/wsmariano/Cairo/master/Cairo-Regular.ttf', 'Cairo', 'normal');
             doc.setFont('Cairo');
             doc.setFontSize(18);
-            doc.text("Courier Manifest - Korean Beautys", 40, 40);
+            doc.text("Courier Manifest - Shipped Orders", 40, 40);
             
             doc.setFontSize(10);
             doc.text(`Date: ${new Date().toLocaleDateString('en-GB')}`, 40, 60);
-            doc.text(`Total Orders: ${reports.length}`, 40, 75);
+            doc.text(`Total Shipped: ${reports.length}`, 40, 75);
 
             const tableData = reports.map((o, index) => [
                 index + 1,
                 o.trackingNumber || '-',
                 o.orderId || '-',
                 o.cod ? `${o.cod} EGP` : '0 EGP',
-                o.status === 'Shipped' ? 'YES' : 'NO'
+                'YES'
             ]);
 
             doc.autoTable({
                 startY: 90,
-                head: [['#', 'Tracking Number', 'Order ID', 'COD Amount', 'Scanned/Shipped']],
+                head: [['#', 'Tracking Number', 'Order ID', 'COD Amount', 'Shipped']],
                 body: tableData,
                 theme: 'grid',
                 styles: { font: 'helvetica', fontSize: 9 },
-                headStyles: { fillColor: [30, 58, 138] } // blue-900
+                headStyles: { fillColor: [30, 58, 138] }
             });
 
             doc.save(`Courier_Manifest_${new Date().toISOString().split('T')[0]}.pdf`);
         });
 
         document.getElementById('btnPrintManifest').addEventListener('click', () => {
-            const reports = getFilteredReports();
-            if(reports.length === 0) return alert('لا يوجد بيانات للطباعة');
+            const reports = Object.values(allOrders).filter(o => o.status === 'Shipped');
+            if(reports.length === 0) return alert('لا يوجد أوردرات مشحونة اليوم للطباعة');
             
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF('p', 'pt', 'a4');
@@ -1336,23 +1336,23 @@
             doc.addFont('https://raw.githubusercontent.com/wsmariano/Cairo/master/Cairo-Regular.ttf', 'Cairo', 'normal');
             doc.setFont('Cairo');
             doc.setFontSize(18);
-            doc.text("Courier Manifest - Korean Beautys", 40, 40);
+            doc.text("Courier Manifest - Shipped Orders", 40, 40);
             
             doc.setFontSize(10);
             doc.text(`Date: ${new Date().toLocaleDateString('en-GB')}`, 40, 60);
-            doc.text(`Total Orders: ${reports.length}`, 40, 75);
+            doc.text(`Total Shipped: ${reports.length}`, 40, 75);
 
             const tableData = reports.map((o, index) => [
                 index + 1,
                 o.trackingNumber || '-',
                 o.orderId || '-',
                 o.cod ? `${o.cod} EGP` : '0 EGP',
-                o.status === 'Shipped' ? 'YES' : 'NO'
+                'YES'
             ]);
 
             doc.autoTable({
                 startY: 90,
-                head: [['#', 'Tracking Number', 'Order ID', 'COD Amount', 'Scanned/Shipped']],
+                head: [['#', 'Tracking Number', 'Order ID', 'COD Amount', 'Shipped']],
                 body: tableData,
                 theme: 'grid',
                 styles: { font: 'helvetica', fontSize: 9 },
@@ -1363,35 +1363,86 @@
             window.open(doc.output('bloburl'), '_blank');
         });
 
+        function generateAuditPdf(doc, reports) {
+            doc.addFont('https://raw.githubusercontent.com/wsmariano/Cairo/master/Cairo-Regular.ttf', 'Cairo', 'normal');
+            doc.setFont('Cairo');
+            
+            // Header
+            doc.setFontSize(18);
+            doc.text("جدول الجرد الشامل للأوردرات والمنتجات", 550, 40, { align: 'right' });
+            
+            doc.setFontSize(10);
+            doc.text(`التاريخ: ${new Date().toLocaleDateString('en-GB')}`, 550, 60, { align: 'right' });
+            doc.text(`إجمالي العدد: ${reports.length}`, 550, 75, { align: 'right' });
+
+            const tableData = reports.map((o, index) => {
+                // Formatting products list
+                let productsList = o.recordType === 'return' ? 'طلب مرتجع' : (o.products || '');
+                if (o.recordType !== 'return' && o.parsedProducts && o.parsedProducts.length > 0) {
+                    productsList = o.parsedProducts.map(p => `${p.name} (x${p.quantity})`).join('\n');
+                }
+
+                // Status text mapping
+                let statusLabel = o.status === 'Shipped' ? 'تم الشحن' : 'قيد الانتظار';
+                if(o.recordType === 'return') {
+                    statusLabel = o.status === 'Received' ? 'مرتجع مستلم' : 'مرتجع معلق';
+                }
+
+                return [
+                    statusLabel,
+                    o.scanTime ? new Date(o.scanTime).toLocaleTimeString('en-GB') : '-',
+                    o.assignedName || o.scannedByUsername || o.scannedBy || '-',
+                    o.notes || '—',
+                    o.recordType === 'return' ? '-' : (o.cod ? `${Number(o.cod).toLocaleString('en-US')} ج.م` : 'N/A'),
+                    productsList,
+                    o.trackingNumber || '-',
+                    o.orderId || '-',
+                    index + 1
+                ];
+            });
+
+            doc.autoTable({
+                startY: 90,
+                head: [['الحالة', 'الوقت', 'المسؤول', 'الملاحظات', 'التحصيل', 'المنتجات', 'رقم التتبع', 'رقم الأوردر', '#']],
+                body: tableData,
+                theme: 'grid',
+                styles: { 
+                    font: 'Cairo', 
+                    fontSize: 8, 
+                    halign: 'right', // Default RTL alignment
+                    valign: 'middle',
+                    cellPadding: 4,
+                    lineColor: [0, 0, 0], 
+                    lineWidth: 0.2
+                },
+                headStyles: { 
+                    fillColor: [240, 240, 240], 
+                    textColor: [0, 0, 0], 
+                    fontStyle: 'bold',
+                    halign: 'center' 
+                },
+                columnStyles: {
+                    0: { halign: 'center', cellWidth: 50 }, // Status
+                    1: { halign: 'center', cellWidth: 40 }, // Time
+                    2: { halign: 'center', cellWidth: 50 }, // Worker
+                    3: { halign: 'right', cellWidth: 60 },  // Notes
+                    4: { halign: 'center', fontStyle: 'bold', cellWidth: 50 }, // COD
+                    5: { halign: 'left', cellWidth: 'auto' }, // Products (LTR for english chars)
+                    6: { halign: 'center', font: 'helvetica', fontStyle: 'normal', cellWidth: 60 }, // Tracking
+                    7: { halign: 'center', fontStyle: 'bold', cellWidth: 50 }, // Order ID
+                    8: { halign: 'center', cellWidth: 20 }  // Index
+                },
+            });
+        }
+
         document.getElementById('btnExportAuditPdf').addEventListener('click', () => {
             const reports = getFilteredReports();
             if(reports.length === 0) return alert('لا يوجد بيانات للتصدير');
             
             const { jsPDF } = window.jspdf;
-            const doc = new jsPDF('l', 'pt', 'a4');
+            const doc = new jsPDF('p', 'pt', 'a4'); // Portrait format
             
-            doc.addFont('https://raw.githubusercontent.com/wsmariano/Cairo/master/Cairo-Regular.ttf', 'Cairo', 'normal');
-            doc.setFont('Cairo');
-            doc.setFontSize(18);
-            doc.text("Internal Audit Report", 40, 40);
-            
-            const tableData = reports.map(o => [
-                o.trackingNumber || '-',
-                o.assignedName || '-',
-                o.status || '-',
-                o.scanTime ? new Date(o.scanTime).toLocaleString('en-GB') : 'NOT SCANNED',
-                o.notes || 'N/A'
-            ]);
-
-            doc.autoTable({
-                startY: 60,
-                head: [['Tracking #', 'Worker', 'Status', 'Scan Timestamp', 'Live Notes']],
-                body: tableData,
-                theme: 'striped',
-                styles: { font: 'helvetica', fontSize: 9 },
-                headStyles: { fillColor: [31, 41, 55] } // gray-800
-            });
-
+            generateAuditPdf(doc, reports);
             doc.save(`Internal_Audit_${new Date().toISOString().split('T')[0]}.pdf`);
         });
 
@@ -1400,30 +1451,10 @@
             if(reports.length === 0) return alert('لا يوجد بيانات للطباعة');
             
             const { jsPDF } = window.jspdf;
-            const doc = new jsPDF('l', 'pt', 'a4');
+            const doc = new jsPDF('p', 'pt', 'a4');
             
-            doc.addFont('https://raw.githubusercontent.com/wsmariano/Cairo/master/Cairo-Regular.ttf', 'Cairo', 'normal');
-            doc.setFont('Cairo');
-            doc.setFontSize(18);
-            doc.text("Internal Audit Report", 40, 40);
+            generateAuditPdf(doc, reports);
             
-            const tableData = reports.map(o => [
-                o.trackingNumber || '-',
-                o.assignedName || '-',
-                o.status || '-',
-                o.scanTime ? new Date(o.scanTime).toLocaleString('en-GB') : 'NOT SCANNED',
-                o.notes || 'N/A'
-            ]);
-
-            doc.autoTable({
-                startY: 60,
-                head: [['Tracking #', 'Worker', 'Status', 'Scan Timestamp', 'Live Notes']],
-                body: tableData,
-                theme: 'striped',
-                styles: { font: 'helvetica', fontSize: 9 },
-                headStyles: { fillColor: [31, 41, 55] }
-            });
-
             doc.autoPrint();
             window.open(doc.output('bloburl'), '_blank');
         });
