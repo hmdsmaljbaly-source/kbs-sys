@@ -182,7 +182,8 @@
                 </div>
                 <div class="flex gap-2 mr-auto">
                     <button id="btnExportRepExcel" class="bg-green-600 text-white px-3 py-1.5 rounded-lg text-sm hover:bg-green-700 flex items-center gap-1 shadow-sm"><i data-lucide="file-spreadsheet" class="w-4 h-4"></i> إكسيل</button>
-                    <!-- PDF placeholders (Manifest functionality would use jsPDF similarly) -->
+                    <button id="btnExportManifestPdf" class="bg-blue-800 text-white px-3 py-1.5 rounded-lg text-sm hover:bg-blue-900 flex items-center gap-1 shadow-sm"><i data-lucide="file-text" class="w-4 h-4"></i> Courier Manifest (PDF)</button>
+                    <button id="btnExportAuditPdf" class="bg-gray-800 text-white px-3 py-1.5 rounded-lg text-sm hover:bg-gray-900 flex items-center gap-1 shadow-sm"><i data-lucide="archive" class="w-4 h-4"></i> Internal Audit (PDF)</button>
                 </div>
             </div>
 
@@ -554,6 +555,74 @@
             const wb = window.XLSX.utils.book_new();
             window.XLSX.utils.book_append_sheet(wb, ws, "Reports");
             window.XLSX.writeFile(wb, `Report_${new Date().toISOString().split('T')[0]}.xlsx`);
+        });
+
+        document.getElementById('btnExportManifestPdf').addEventListener('click', () => {
+            const reports = getFilteredReports();
+            if(reports.length === 0) return alert('لا يوجد بيانات للتصدير');
+            
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF('p', 'pt', 'a4');
+            
+            doc.addFont('https://raw.githubusercontent.com/wsmariano/Cairo/master/Cairo-Regular.ttf', 'Cairo', 'normal');
+            doc.setFont('Cairo');
+            doc.setFontSize(18);
+            doc.text("Courier Manifest - Korean Beautys", 40, 40);
+            
+            doc.setFontSize(10);
+            doc.text(`Date: ${new Date().toLocaleDateString('en-GB')}`, 40, 60);
+            doc.text(`Total Orders: ${reports.length}`, 40, 75);
+
+            const tableData = reports.map((o, index) => [
+                index + 1,
+                o.trackingNumber || '-',
+                o.orderId || '-',
+                o.cod ? `${o.cod} EGP` : '0 EGP',
+                o.status === 'Shipped' ? 'YES' : 'NO'
+            ]);
+
+            doc.autoTable({
+                startY: 90,
+                head: [['#', 'Tracking Number', 'Order ID', 'COD Amount', 'Scanned/Shipped']],
+                body: tableData,
+                theme: 'grid',
+                styles: { font: 'helvetica', fontSize: 9 },
+                headStyles: { fillColor: [30, 58, 138] } // blue-900
+            });
+
+            doc.save(`Courier_Manifest_${new Date().toISOString().split('T')[0]}.pdf`);
+        });
+
+        document.getElementById('btnExportAuditPdf').addEventListener('click', () => {
+            const reports = getFilteredReports();
+            if(reports.length === 0) return alert('لا يوجد بيانات للتصدير');
+            
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF('l', 'pt', 'a4');
+            
+            doc.addFont('https://raw.githubusercontent.com/wsmariano/Cairo/master/Cairo-Regular.ttf', 'Cairo', 'normal');
+            doc.setFont('Cairo');
+            doc.setFontSize(18);
+            doc.text("Internal Audit Report", 40, 40);
+            
+            const tableData = reports.map(o => [
+                o.trackingNumber || '-',
+                o.assignedName || '-',
+                o.status || '-',
+                o.scanTime ? new Date(o.scanTime).toLocaleString('en-GB') : 'NOT SCANNED',
+                o.notes || 'N/A'
+            ]);
+
+            doc.autoTable({
+                startY: 60,
+                head: [['Tracking #', 'Worker', 'Status', 'Scan Timestamp', 'Live Notes']],
+                body: tableData,
+                theme: 'striped',
+                styles: { font: 'helvetica', fontSize: 9 },
+                headStyles: { fillColor: [31, 41, 55] } // gray-800
+            });
+
+            doc.save(`Internal_Audit_${new Date().toISOString().split('T')[0]}.pdf`);
         });
 
         document.getElementById('confirmArchiveBtn').addEventListener('click', async () => {
