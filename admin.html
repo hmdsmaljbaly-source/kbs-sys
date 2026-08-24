@@ -724,14 +724,21 @@
             btn.innerHTML = 'جاري الحفظ...';
             
             try {
-                await set(ref(db, `${USERS_PATH}/${username}`), {
+                if (!db) throw new Error("قاعدة البيانات غير متصلة");
+
+                const userData = {
                     name, 
                     username, 
                     password, 
                     role, 
                     isActive: true,
                     createdAt: new Date().toISOString()
-                });
+                };
+
+                await Promise.race([
+                    set(ref(db, `${USERS_PATH}/${username}`), userData),
+                    new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), 4000))
+                ]);
                 
                 showToast("تم حفظ المستخدم بنجاح!");
                 nameEl.value = '';
@@ -740,7 +747,11 @@
                 document.getElementById('addUserForm').classList.add('hidden');
             } catch (err) {
                 console.error(err);
-                alert("حدث خطأ أثناء حفظ المستخدم: " + err.message);
+                if (err.message === "Timeout") {
+                    alert("فشل الاتصال بقاعدة البيانات: تحقق من صلاحيات الـ Rules أو اتصال الإنترنت");
+                } else {
+                    alert("حدث خطأ أثناء حفظ المستخدم: " + err.message);
+                }
             } finally {
                 btn.disabled = false;
                 btn.innerHTML = originalText;
