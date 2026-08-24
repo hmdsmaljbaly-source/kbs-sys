@@ -31,6 +31,9 @@
 </head>
 <body class="bg-gray-100 min-h-screen flex">
 
+    <!-- Toast Notification -->
+    <div id="toast" class="fixed bottom-5 right-5 bg-green-600 text-white px-6 py-3 rounded-xl shadow-2xl font-bold transform transition-transform translate-y-20 opacity-0 z-50"></div>
+
     <!-- Sidebar -->
     <aside class="w-64 bg-white shadow-xl h-screen sticky top-0 flex flex-col z-20">
         <div class="p-6 border-b flex items-center gap-3">
@@ -91,11 +94,14 @@
                     <table class="min-w-full divide-y divide-gray-200 text-sm">
                         <thead class="bg-gray-50">
                             <tr>
-                                <th class="px-6 py-3 text-right font-medium text-gray-500">الأوردر / التتبع</th>
-                                <th class="px-6 py-3 text-right font-medium text-gray-500">المنتجات</th>
-                                <th class="px-6 py-3 text-right font-medium text-gray-500">العامل المعين</th>
-                                <th class="px-6 py-3 text-right font-medium text-gray-500">الحالة</th>
-                                <th class="px-6 py-3 text-center font-medium text-gray-500">حظر LEO</th>
+                                <th class="px-4 py-3 text-right font-medium text-gray-500">الأوردر / التتبع</th>
+                                <th class="px-4 py-3 text-right font-medium text-gray-500">التحصيل (COD)</th>
+                                <th class="px-4 py-3 text-right font-medium text-gray-500">المنتجات</th>
+                                <th class="px-4 py-3 text-right font-medium text-gray-500">العامل المعين</th>
+                                <th class="px-4 py-3 text-right font-medium text-gray-500">موعد الإسكان</th>
+                                <th class="px-4 py-3 text-right font-medium text-gray-500">ملاحظات حية</th>
+                                <th class="px-4 py-3 text-right font-medium text-gray-500">الحالة</th>
+                                <th class="px-4 py-3 text-center font-medium text-gray-500">حظر LEO</th>
                             </tr>
                         </thead>
                         <tbody id="ordersTableBody" class="bg-white divide-y divide-gray-200"></tbody>
@@ -147,28 +153,73 @@
 
         <!-- View 3: Reports -->
         <section id="view-reports" class="view-section">
-            <h2 class="text-2xl font-bold text-gray-800 mb-6">التقارير وسجل البيانات</h2>
-            <div class="bg-white rounded-xl shadow-sm border p-6 max-w-2xl">
-                <div class="space-y-6">
-                    <div class="grid grid-cols-2 gap-4">
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700">تاريخ البداية</label>
-                            <input type="date" id="reportStartDate" class="mt-1 block w-full border border-gray-300 rounded-md p-2">
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700">تاريخ النهاية</label>
-                            <input type="date" id="reportEndDate" class="mt-1 block w-full border border-gray-300 rounded-md p-2">
-                        </div>
-                    </div>
-                    <button class="w-full bg-indigo-600 text-white py-3 px-4 rounded-md hover:bg-indigo-700 transition flex justify-center items-center gap-2">
-                        <i data-lucide="download" class="w-5 h-5"></i> تحميل تقرير شركة الشحن (Manifest)
-                    </button>
-                    <button class="w-full bg-gray-800 text-white py-3 px-4 rounded-md hover:bg-gray-900 transition flex justify-center items-center gap-2">
-                        <i data-lucide="archive" class="w-5 h-5"></i> تحميل تقرير التدقيق الداخلي
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-bold text-gray-800">التقارير وسجل البيانات</h2>
+                <div class="flex gap-2">
+                    <button onclick="document.getElementById('archiveModal').classList.remove('hidden')" class="bg-red-100 text-red-700 px-4 py-2 rounded-lg text-sm hover:bg-red-200 font-bold flex items-center gap-2">
+                        <i data-lucide="trash-2" class="w-4 h-4"></i> إدارة الأرشيف
                     </button>
                 </div>
             </div>
+
+            <!-- Filters -->
+            <div class="bg-white rounded-xl shadow-sm border p-4 mb-6 flex flex-wrap gap-4 items-end">
+                <div>
+                    <label class="block text-xs font-bold text-gray-600 mb-1">فلتر سريع</label>
+                    <div class="flex bg-gray-100 rounded-lg p-1">
+                        <button onclick="setReportFilter('today')" class="report-filter-btn active bg-white shadow-sm px-3 py-1 text-sm rounded-md font-medium text-gray-700 transition" data-filter="today">اليوم</button>
+                        <button onclick="setReportFilter('week')" class="report-filter-btn px-3 py-1 text-sm rounded-md font-medium text-gray-700 hover:bg-white transition" data-filter="week">الأسبوع</button>
+                        <button onclick="setReportFilter('all')" class="report-filter-btn px-3 py-1 text-sm rounded-md font-medium text-gray-700 hover:bg-white transition" data-filter="all">الكل</button>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-600 mb-1">من تاريخ</label>
+                    <input type="date" id="repStart" class="border border-gray-300 rounded-lg px-3 py-1.5 text-sm outline-none focus:border-blue-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-600 mb-1">إلى تاريخ</label>
+                    <input type="date" id="repEnd" class="border border-gray-300 rounded-lg px-3 py-1.5 text-sm outline-none focus:border-blue-500">
+                </div>
+                <div class="flex gap-2 mr-auto">
+                    <button id="btnExportRepExcel" class="bg-green-600 text-white px-3 py-1.5 rounded-lg text-sm hover:bg-green-700 flex items-center gap-1 shadow-sm"><i data-lucide="file-spreadsheet" class="w-4 h-4"></i> إكسيل</button>
+                    <!-- PDF placeholders (Manifest functionality would use jsPDF similarly) -->
+                </div>
+            </div>
+
+            <!-- Historical Table -->
+            <div class="bg-white rounded-xl shadow-sm border overflow-hidden">
+                <div class="overflow-x-auto h-[60vh] overflow-y-auto">
+                    <table class="min-w-full divide-y divide-gray-200 text-sm">
+                        <thead class="bg-gray-50 sticky top-0 shadow-sm">
+                            <tr>
+                                <th class="px-4 py-3 text-right font-bold text-gray-500">الأوردر / التتبع</th>
+                                <th class="px-4 py-3 text-right font-bold text-gray-500">العامل</th>
+                                <th class="px-4 py-3 text-right font-bold text-gray-500">تاريخ الإسكان</th>
+                                <th class="px-4 py-3 text-right font-bold text-gray-500">تاريخ الرفع</th>
+                                <th class="px-4 py-3 text-right font-bold text-gray-500">الحالة</th>
+                            </tr>
+                        </thead>
+                        <tbody id="reportsTableBody" class="bg-white divide-y divide-gray-200"></tbody>
+                    </table>
+                </div>
+            </div>
         </section>
+
+        <!-- Archive Modal -->
+        <div id="archiveModal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 z-50 flex items-center justify-center">
+            <div class="bg-white rounded-xl shadow-xl w-full max-w-md p-6">
+                <h3 class="text-lg font-bold text-red-600 mb-4 border-b pb-2 flex items-center gap-2"><i data-lucide="alert-triangle"></i> خيارات الأرشفة والحذف</h3>
+                <select id="archiveAction" class="w-full border p-2 rounded-lg mb-4">
+                    <option value="today_shipped">حذف أوردرات اليوم المشحونة فقط</option>
+                    <option value="week_all">مسح جميع الأوردرات القديمة لأكثر من أسبوع</option>
+                    <option value="reset_all">تصفير الأرشيف بالكامل (حذف الكل)</option>
+                </select>
+                <div class="flex justify-end gap-2 mt-6">
+                    <button onclick="document.getElementById('archiveModal').classList.add('hidden')" class="px-4 py-2 bg-gray-200 rounded-lg text-gray-800">إلغاء</button>
+                    <button id="confirmArchiveBtn" class="px-4 py-2 bg-red-600 rounded-lg text-white font-bold hover:bg-red-700">تأكيد وتنفيذ</button>
+                </div>
+            </div>
+        </div>
 
         <!-- View 4: Users -->
         <section id="view-users" class="view-section">
@@ -192,7 +243,7 @@
                         <option value="ADMIN">مشرف (Admin)</option>
                     </select>
                 </div>
-                <button id="saveUserBtn" class="mt-4 bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700">حفظ المستخدم</button>
+                <button id="saveUserBtn" class="mt-4 bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 font-bold shadow">حفظ المستخدم</button>
             </div>
 
             <div class="bg-white rounded-xl shadow-sm border overflow-hidden">
@@ -219,23 +270,37 @@
         import { db } from './js/config.js';
         import { ref, onValue, set, update, push, remove } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
 
-        // Global functions for inline HTML calls
+        const USERS_PATH = 'artifacts/korean-beautys-dispatch/users';
+
+        // Global HTML triggers
         window.switchView = function(viewId) {
             document.querySelectorAll('.view-section').forEach(el => el.classList.remove('active'));
-            document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active', 'bg-white', 'shadow-sm'));
             
             document.getElementById(`view-${viewId}`).classList.add('active');
             document.getElementById(`nav-${viewId}`).classList.add('active');
             lucide.createIcons();
         };
 
+        window.showToast = function(msg) {
+            const t = document.getElementById('toast');
+            t.textContent = msg;
+            t.classList.remove('translate-y-20', 'opacity-0');
+            setTimeout(() => {
+                t.classList.add('translate-y-20', 'opacity-0');
+            }, 3000);
+        };
+
+        window.saveNote = async function(key) {
+            const note = document.getElementById(`note_${key}`).value;
+            await update(ref(db), { [`/orders/${key}/notes`]: note });
+            showToast('تم حفظ الملاحظة');
+        };
+
         // 1. Auth Guard
         const user = AuthService.requireRole(['ADMIN']);
-        if(user) {
-            document.getElementById('userNameDisplay').textContent = user.name;
-        }
+        if(user) document.getElementById('userNameDisplay').textContent = user.name;
         document.getElementById('logoutBtn').addEventListener('click', () => AuthService.logout());
-
         lucide.createIcons();
 
         // 2. State
@@ -243,39 +308,33 @@
         let allUsers = {};
 
         // 3. Listeners
-        const usersRef = ref(db, 'users');
-        onValue(usersRef, (snapshot) => {
+        onValue(ref(db, USERS_PATH), (snapshot) => {
             allUsers = snapshot.val() || {};
             renderUsersTable();
             updateWorkerDropdowns();
         });
 
-        const ordersRef = ref(db, 'orders');
-        onValue(ordersRef, (snapshot) => {
+        onValue(ref(db, 'orders'), (snapshot) => {
             allOrders = snapshot.val() || {};
             renderOrdersTable();
             renderLiveMonitor();
+            renderReportsTable();
         });
 
-        // 4. View 1: Orders Logic
+        // 4. View 1: Orders
         function renderOrdersTable() {
             const tbody = document.getElementById('ordersTableBody');
             tbody.innerHTML = '';
             const searchQ = document.getElementById('searchOrders').value.toLowerCase();
-            
-            const keys = Object.keys(allOrders).reverse(); // Newest first
+            const keys = Object.keys(allOrders).reverse();
             
             for (const key of keys) {
                 const order = allOrders[key];
-                
-                // Search filter
-                if (searchQ && !order.trackingNumber.toLowerCase().includes(searchQ) && !order.orderId.toLowerCase().includes(searchQ)) {
-                    continue;
-                }
+                if (searchQ && !order.trackingNumber.toLowerCase().includes(searchQ) && !order.orderId.toLowerCase().includes(searchQ)) continue;
 
-                let statusHtml = `<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">قيد الانتظار</span>`;
-                if(order.status === 'Shipped') statusHtml = `<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">مشحون</span>`;
-                if(order.status === 'Packed') statusHtml = `<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">مغلف</span>`;
+                let statusHtml = `<span class="px-2 py-1 text-[11px] font-bold rounded-md bg-yellow-100 text-yellow-800">Pending</span>`;
+                if(order.status === 'Shipped') statusHtml = `<span class="px-2 py-1 text-[11px] font-bold rounded-md bg-green-100 text-green-800">Shipped</span>`;
+                if(order.status === 'Packed') statusHtml = `<span class="px-2 py-1 text-[11px] font-bold rounded-md bg-blue-100 text-blue-800">Packed</span>`;
 
                 const toggleId = `leo_${key}`;
                 const isChecked = order.isLeo ? 'checked' : '';
@@ -286,37 +345,51 @@
                     </div>
                 `;
 
-                // Add orange border to LEO toggled rows
-                const rowClass = order.isLeo ? 'bg-orange-50' : '';
+                let productsDisplay = order.products;
+                if (order.parsedProducts && order.parsedProducts.length > 0) {
+                    productsDisplay = order.parsedProducts.map(p => `<div class="text-xs mb-1">▪ ${p.name} <span class="font-bold text-blue-600">(العدد: ${p.quantity})</span> ${p.condition ? `<span class="text-red-500">${p.condition}</span>` : ''}</div>`).join('');
+                }
+
+                const scanDetails = order.status === 'Shipped' && order.scanTime 
+                    ? `<div class="text-[11px] text-green-700 font-bold">${order.scannedBy || '-'}</div><div class="text-[10px] text-gray-500">${new Date(order.scanTime).toLocaleString('ar-EG')}</div>`
+                    : `<div class="text-[11px] text-gray-400">لم يتم الإسكان</div>`;
+
+                const notesHtml = `
+                    <div class="flex items-center gap-1 min-w-[150px]">
+                        <input type="text" id="note_${key}" value="${order.notes || ''}" placeholder="..." class="w-full text-xs border rounded p-1 border-gray-300 focus:outline-none focus:border-blue-500">
+                        <button onclick="saveNote('${key}')" class="text-blue-600 hover:text-blue-800 p-1 bg-blue-50 rounded">💾</button>
+                    </div>
+                `;
 
                 const tr = document.createElement('tr');
-                tr.className = rowClass;
+                tr.className = order.isLeo ? 'bg-orange-50' : '';
                 tr.innerHTML = `
-                    <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">${order.trackingNumber}<br><span class="text-xs text-gray-500 font-normal">Order: ${order.orderId}</span></td>
-                    <td class="px-6 py-4 text-sm text-gray-500 max-w-xs truncate" title="${order.products}">${order.products}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${order.assignedName || order.assignedTo}</td>
-                    <td class="px-6 py-4 whitespace-nowrap">${statusHtml}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-center">${toggleHtml}</td>
+                    <td class="px-4 py-3 whitespace-nowrap text-sm font-bold text-gray-900">${order.trackingNumber}<br><span class="text-[10px] text-gray-500 font-normal">Order: ${order.orderId}</span></td>
+                    <td class="px-4 py-3 whitespace-nowrap text-sm font-bold text-gray-800">${order.cod || 0} ج.م</td>
+                    <td class="px-4 py-3 text-sm text-gray-700 min-w-[200px]">${productsDisplay}</td>
+                    <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-600">${order.assignedName || order.assignedTo}</td>
+                    <td class="px-4 py-3 whitespace-nowrap">${scanDetails}</td>
+                    <td class="px-4 py-3 whitespace-nowrap">${notesHtml}</td>
+                    <td class="px-4 py-3 whitespace-nowrap">${statusHtml}</td>
+                    <td class="px-4 py-3 whitespace-nowrap text-center">${toggleHtml}</td>
                 `;
                 tbody.appendChild(tr);
             }
 
-            // Bind LEO Toggles
             document.querySelectorAll('.leo-toggle').forEach(chk => {
                 chk.addEventListener('change', async (e) => {
                     const oKey = e.target.getAttribute('data-key');
                     const newVal = e.target.checked;
                     await update(ref(db), { [`/orders/${oKey}/isLeo`]: newVal });
+                    showToast(newVal ? 'تم تفعيل حظر LEO' : 'تم إلغاء حظر LEO');
                 });
             });
         }
-        
         document.getElementById('searchOrders').addEventListener('input', renderOrdersTable);
 
         function renderLiveMonitor() {
             const monitorDiv = document.getElementById('workersMonitor');
             monitorDiv.innerHTML = ''; 
-
             const workerStats = {};
             for (const order of Object.values(allOrders)) {
                 if (!order.assignedTo) continue;
@@ -326,15 +399,12 @@
                 workerStats[order.assignedTo].total++;
                 if (order.status === 'Shipped') workerStats[order.assignedTo].completed++;
             }
-
             for (const [uid, stats] of Object.entries(workerStats)) {
                 const percent = stats.total === 0 ? 0 : Math.round((stats.completed / stats.total) * 100);
                 const card = document.createElement('div');
                 card.className = 'bg-white rounded-xl shadow-sm border p-4 relative overflow-hidden';
                 card.innerHTML = `
-                    <div class="absolute top-0 left-0 w-full h-1 bg-blue-100">
-                        <div class="h-1 bg-blue-600" style="width: ${percent}%"></div>
-                    </div>
+                    <div class="absolute top-0 left-0 w-full h-1 bg-blue-100"><div class="h-1 bg-blue-600" style="width: ${percent}%"></div></div>
                     <div class="flex justify-between items-center mb-2 mt-2">
                         <span class="font-bold text-gray-800 text-sm">${stats.name}</span>
                         <span class="text-xs font-bold text-blue-600">${percent}%</span>
@@ -345,13 +415,12 @@
             }
         }
 
-        // 5. View 2: Batches Logic
+        // 5. View 2: Batches
         function updateWorkerDropdowns() {
             const select1 = document.getElementById('workerSelect');
             const select2 = document.getElementById('bulkWorkerSelect');
             select1.innerHTML = '<option value="">-- اختر العامل --</option>';
             select2.innerHTML = '<option value="">-- اختر العامل --</option>';
-            
             for (const [uid, u] of Object.entries(allUsers)) {
                 if (u.role === 'PACKAGING' && u.isActive !== false) {
                     select1.insertAdjacentHTML('beforeend', `<option value="${uid}">${u.name}</option>`);
@@ -367,100 +436,166 @@
             
             if (!workerId || !file) return alert("يرجى اختيار عامل وإرفاق ملف إكسيل.");
             const workerName = document.getElementById('workerSelect').options[document.getElementById('workerSelect').selectedIndex].text;
-
             const btn = document.getElementById('uploadBatchBtn');
-            btn.disabled = true;
-            btn.innerHTML = 'جاري الرفع...';
+            btn.disabled = true; btn.innerHTML = 'جاري الرفع...';
 
             const reader = new FileReader();
             reader.onload = async (e) => {
                 const data = new Uint8Array(e.target.result);
                 const workbook = window.XLSX.read(data, {type: 'array'});
                 const json = window.XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
-                
-                if (json.length === 0) {
-                    btn.disabled = false;
-                    btn.innerHTML = 'رفع وتوزيع الدفعة';
-                    return;
-                }
+                if (json.length === 0) { btn.disabled = false; btn.innerHTML = 'رفع وتوزيع الدفعة'; return; }
 
                 const newBatchRef = push(ref(db, 'batches'));
                 const batchId = newBatchRef.key;
+                const nowIso = new Date().toISOString();
                 
-                await set(newBatchRef, {
-                    assignedTo: workerId,
-                    totalOrders: json.length,
-                    completedOrders: 0,
-                    isPrinted: false,
-                    isCompleted: false,
-                    createdAt: new Date().toISOString()
-                });
+                await set(newBatchRef, { assignedTo: workerId, totalOrders: json.length, completedOrders: 0, isPrinted: false, isCompleted: false, createdAt: nowIso });
 
                 const updates = {};
                 for (const row of json) {
                     const trackingNumber = row['Tracking Number'] || row['tracking_number'] || String(Math.random()).substring(2,8);
                     const orderId = row['Name'] || row['Order ID'] || row['Business Reference Number'];
                     const desc = row['Lineitem name'] || row['Description'] || '';
-                    
                     const parsed = BulkEngine.parseDescriptionItems(desc);
                     
                     updates[`/orders/WAYBILL_${trackingNumber}`] = {
-                        orderId: orderId,
-                        trackingNumber: trackingNumber,
-                        cod: row['Total'] || row['Cod Amount'] || 0,
-                        products: desc,
-                        parsedProducts: parsed,
-                        assignedTo: workerId,
-                        assignedName: workerName,
-                        batchId: batchId,
-                        status: 'Pending',
-                        isLeo: false
+                        orderId: orderId, trackingNumber: trackingNumber, cod: row['Total'] || row['Cod Amount'] || 0,
+                        products: desc, parsedProducts: parsed, assignedTo: workerId, assignedName: workerName,
+                        batchId: batchId, status: 'Pending', isLeo: false, createdAt: nowIso
                     };
                 }
-
                 await update(ref(db), updates);
-                alert("تم رفع الدفعة وتعيينها للعامل بنجاح!");
-                fileInput.value = ''; 
-                btn.disabled = false;
-                btn.innerHTML = '<i data-lucide="rocket" class="w-4 h-4"></i> رفع وتوزيع الدفعة';
+                showToast("تم رفع الدفعة وتعيينها للعامل بنجاح!");
+                fileInput.value = ''; btn.disabled = false; btn.innerHTML = '<i data-lucide="rocket" class="w-4 h-4"></i> رفع وتوزيع الدفعة';
                 lucide.createIcons();
             };
             reader.readAsArrayBuffer(file);
         });
 
-        // Bulk Exports
-        function getWorkerBulk(uid) {
-            let workerOrders = Object.values(allOrders).filter(o => o.assignedTo === uid && o.status !== 'Shipped');
-            return BulkEngine.aggregateSKUs(workerOrders);
-        }
-
         document.getElementById('exportWorkerBulkExcel').addEventListener('click', () => {
             const uid = document.getElementById('bulkWorkerSelect').value;
             if(!uid) return alert('اختر العامل أولاً');
-            const bulk = getWorkerBulk(uid);
-            BulkEngine.exportToExcel(bulk, `Worker_${uid}_Bulk.xlsx`);
+            let workerOrders = Object.values(allOrders).filter(o => o.assignedTo === uid && o.status !== 'Shipped');
+            BulkEngine.exportToExcel(BulkEngine.aggregateSKUs(workerOrders), `Worker_${uid}_Bulk.xlsx`);
         });
 
         document.getElementById('exportWorkerBulkPdf').addEventListener('click', () => {
             const uid = document.getElementById('bulkWorkerSelect').value;
             if(!uid) return alert('اختر العامل أولاً');
-            const bulk = getWorkerBulk(uid);
-            BulkEngine.exportToPDF(bulk, `Worker_${uid}_Bulk.pdf`);
+            let workerOrders = Object.values(allOrders).filter(o => o.assignedTo === uid && o.status !== 'Shipped');
+            BulkEngine.exportToPDF(BulkEngine.aggregateSKUs(workerOrders), `Worker_${uid}_Bulk.pdf`);
         });
 
-        // 6. View 4: Users Logic
+        // 6. View 3: Reports
+        let activeReportFilter = 'today';
+        window.setReportFilter = function(filter) {
+            activeReportFilter = filter;
+            document.querySelectorAll('.report-filter-btn').forEach(btn => {
+                if(btn.dataset.filter === filter) {
+                    btn.classList.add('bg-white', 'shadow-sm'); btn.classList.remove('hover:bg-white');
+                } else {
+                    btn.classList.remove('bg-white', 'shadow-sm'); btn.classList.add('hover:bg-white');
+                }
+            });
+            renderReportsTable();
+        };
+
+        function getFilteredReports() {
+            let start = null, end = null;
+            const now = new Date();
+            if (activeReportFilter === 'today') {
+                start = new Date(now.setHours(0,0,0,0)); end = new Date(now.setHours(23,59,59,999));
+            } else if (activeReportFilter === 'week') {
+                const firstDay = new Date(now.setDate(now.getDate() - now.getDay()));
+                start = new Date(firstDay.setHours(0,0,0,0)); end = new Date(); end.setHours(23,59,59,999);
+            } else if (activeReportFilter === 'custom') {
+                const s = document.getElementById('repStart').value; const e = document.getElementById('repEnd').value;
+                if(s) start = new Date(s); if(e) { end = new Date(e); end.setHours(23,59,59,999); }
+            }
+            return Object.values(allOrders).filter(o => {
+                const dateStr = o.scanTime || o.createdAt;
+                if (!start && !end) return true;
+                if (!dateStr) return false;
+                const d = new Date(dateStr);
+                return (!start || d >= start) && (!end || d <= end);
+            });
+        }
+
+        function renderReportsTable() {
+            const tbody = document.getElementById('reportsTableBody');
+            tbody.innerHTML = '';
+            const filtered = getFilteredReports();
+            filtered.forEach(o => {
+                const stat = o.status === 'Shipped' ? '<span class="text-green-600 font-bold">Shipped</span>' : '<span class="text-amber-500 font-bold">Pending</span>';
+                const sTime = o.scanTime ? new Date(o.scanTime).toLocaleString('ar-EG') : '-';
+                const cTime = o.createdAt ? new Date(o.createdAt).toLocaleString('ar-EG') : '-';
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td class="px-4 py-3 whitespace-nowrap text-sm font-bold text-gray-900">${o.trackingNumber}</td>
+                    <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-600">${o.assignedName || o.assignedTo}</td>
+                    <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-600">${sTime}</td>
+                    <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500">${cTime}</td>
+                    <td class="px-4 py-3 whitespace-nowrap text-sm">${stat}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+        document.getElementById('repStart').addEventListener('change', () => setReportFilter('custom'));
+        document.getElementById('repEnd').addEventListener('change', () => setReportFilter('custom'));
+
+        document.getElementById('btnExportRepExcel').addEventListener('click', () => {
+            const data = getFilteredReports().map(o => ({
+                "رقم التتبع": o.trackingNumber, "رقم الأوردر": o.orderId, "العامل": o.assignedName, "المنتجات": o.products,
+                "الحالة": o.status, "التحصيل": o.cod, "وقت الإسكان": o.scanTime ? new Date(o.scanTime).toLocaleString('ar-EG') : '', "ملاحظات": o.notes || ''
+            }));
+            if(data.length===0) return alert('لا يوجد بيانات للتصدير');
+            const ws = window.XLSX.utils.json_to_sheet(data);
+            const wb = window.XLSX.utils.book_new();
+            window.XLSX.utils.book_append_sheet(wb, ws, "Reports");
+            window.XLSX.writeFile(wb, `Report_${new Date().toISOString().split('T')[0]}.xlsx`);
+        });
+
+        document.getElementById('confirmArchiveBtn').addEventListener('click', async () => {
+            const action = document.getElementById('archiveAction').value;
+            const updates = {};
+            let count = 0;
+            const now = new Date();
+            
+            if (action === 'today_shipped') {
+                const todayStart = new Date(now.setHours(0,0,0,0));
+                for(const [k, o] of Object.entries(allOrders)) {
+                    if(o.status === 'Shipped' && o.scanTime && new Date(o.scanTime) >= todayStart) { updates[`/orders/${k}`] = null; count++; }
+                }
+            } else if (action === 'week_all') {
+                const weekAgo = new Date(now.setDate(now.getDate() - 7));
+                for(const [k, o] of Object.entries(allOrders)) {
+                    const d = o.createdAt || o.scanTime;
+                    if(d && new Date(d) < weekAgo) { updates[`/orders/${k}`] = null; count++; }
+                }
+            } else if (action === 'reset_all') {
+                if(confirm("تحذير أمني: هل أنت متأكد تماماً من حذف جميع الأوردرات من السيرفر؟")) {
+                    await set(ref(db, 'orders'), null);
+                    await set(ref(db, 'batches'), null);
+                    count = Object.keys(allOrders).length;
+                }
+            }
+            if(Object.keys(updates).length > 0) await update(ref(db), updates);
+            
+            showToast(`تم مسح ${count} أوردر بنجاح.`);
+            document.getElementById('archiveModal').classList.add('hidden');
+        });
+
+        // 7. View 4: Users
         function renderUsersTable() {
             const tbody = document.getElementById('usersTableBody');
             tbody.innerHTML = '';
-            
             for (const [uid, u] of Object.entries(allUsers)) {
                 let badge = '';
                 if(u.role === 'ADMIN') badge = '<span class="px-2 py-1 bg-red-100 text-red-800 rounded-md text-xs font-bold">Admin</span>';
                 else if(u.role === 'PACKAGING') badge = '<span class="px-2 py-1 bg-blue-100 text-blue-800 rounded-md text-xs font-bold">Packaging</span>';
                 else if(u.role === 'WAREHOUSE') badge = '<span class="px-2 py-1 bg-purple-100 text-purple-800 rounded-md text-xs font-bold">Warehouse</span>';
-
                 const status = (u.isActive !== false) ? '<span class="text-green-600 font-bold">نشط</span>' : '<span class="text-gray-400">معطل</span>';
-
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
                     <td class="px-6 py-4 text-sm font-bold text-gray-900">${u.name}<br><span class="text-xs text-gray-500 font-normal">@${u.username}</span></td>
@@ -476,29 +611,30 @@
         }
 
         window.toggleUserStatus = async function(uid, currentStatus) {
-            await update(ref(db), { [`/users/${uid}/isActive`]: !currentStatus });
+            await update(ref(db), { [`/${USERS_PATH}/${uid}/isActive`]: !currentStatus });
+            showToast(currentStatus ? 'تم تعطيل المستخدم' : 'تم تفعيل المستخدم');
         };
         
         window.deleteUser = async function(uid) {
-            if(confirm("هل أنت متأكد من حذف هذا المستخدم؟")) {
-                await remove(ref(db, `users/${uid}`));
+            if(confirm("هل أنت متأكد من حذف هذا المستخدم؟ لا يمكن التراجع.")) {
+                await remove(ref(db, `${USERS_PATH}/${uid}`));
+                showToast('تم حذف المستخدم بنجاح');
             }
         };
 
         document.getElementById('saveUserBtn').addEventListener('click', async () => {
             const name = document.getElementById('newUserName').value.trim();
-            const username = document.getElementById('newUserUsername').value.trim();
+            const username = document.getElementById('newUserUsername').value.trim().toLowerCase();
             const password = document.getElementById('newUserPassword').value.trim();
             const role = document.getElementById('newUserRole').value;
 
             if(!name || !username || !password) return alert("يرجى تعبئة جميع الحقول.");
-
-            const newUserRef = push(ref(db, 'users'));
-            await set(newUserRef, {
+            
+            await set(ref(db, `${USERS_PATH}/${username}`), {
                 name, username, password, role, isActive: true
             });
             
-            alert("تمت إضافة المستخدم بنجاح!");
+            showToast("تم حفظ المستخدم بنجاح");
             document.getElementById('newUserName').value = '';
             document.getElementById('newUserUsername').value = '';
             document.getElementById('newUserPassword').value = '';

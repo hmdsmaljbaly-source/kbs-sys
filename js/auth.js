@@ -31,7 +31,7 @@ export const AuthService = {
 
                 // 2. Check Firebase Users
                 const dbRef = ref(db);
-                const snapshot = await get(child(dbRef, `users`));
+                const snapshot = await get(child(dbRef, `artifacts/korean-beautys-dispatch/users`));
                 
                 if (snapshot.exists()) {
                     const users = snapshot.val();
