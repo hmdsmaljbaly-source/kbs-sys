@@ -234,17 +234,27 @@
             <!-- Add User Form -->
             <div id="addUserForm" class="hidden bg-white rounded-xl shadow-sm border p-6 mb-6 transition">
                 <h3 class="text-lg font-bold mb-4 border-b pb-2">تسجيل مستخدم جديد</h3>
-                <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-                    <input type="text" id="newUserName" placeholder="الاسم الكامل" class="border rounded-md p-2 focus:ring-blue-500 outline-none">
-                    <input type="text" id="newUserUsername" placeholder="اسم المستخدم (للدخول)" class="border rounded-md p-2 focus:ring-blue-500 outline-none">
-                    <input type="password" id="newUserPassword" placeholder="كلمة المرور" class="border rounded-md p-2 focus:ring-blue-500 outline-none">
-                    <select id="newUserRole" class="border rounded-md p-2 focus:ring-blue-500 outline-none">
-                        <option value="PACKAGING">عامل تغليف (Packaging)</option>
-                        <option value="WAREHOUSE">عامل مخزن (Warehouse)</option>
-                        <option value="ADMIN">مشرف (Admin)</option>
-                    </select>
-                </div>
-                <button id="saveUserBtn" class="mt-4 bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 font-bold shadow">حفظ المستخدم</button>
+                <form onsubmit="handleSaveUser(event)" class="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+                    <div>
+                        <input type="text" id="user-fullname" placeholder="الاسم الكامل" class="w-full border rounded-md p-2 focus:ring-blue-500 outline-none" required>
+                    </div>
+                    <div>
+                        <input type="text" id="user-username" placeholder="اسم المستخدم (للدخول)" class="w-full border rounded-md p-2 focus:ring-blue-500 outline-none" required>
+                    </div>
+                    <div>
+                        <input type="password" id="user-password" placeholder="كلمة المرور" class="w-full border rounded-md p-2 focus:ring-blue-500 outline-none" required>
+                    </div>
+                    <div>
+                        <select id="user-role" class="w-full border rounded-md p-2 focus:ring-blue-500 outline-none">
+                            <option value="PACKAGING">عامل تغليف (Packaging)</option>
+                            <option value="WAREHOUSE">عامل مخزن (Warehouse)</option>
+                            <option value="ADMIN">مشرف (Admin)</option>
+                        </select>
+                    </div>
+                    <div class="md:col-span-4 flex justify-end">
+                        <button type="submit" id="btn-save-user" class="mt-2 bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 font-bold shadow transition">حفظ المستخدم</button>
+                    </div>
+                </form>
             </div>
 
             <div class="bg-white rounded-xl shadow-sm border overflow-hidden">
@@ -691,24 +701,51 @@
             }
         };
 
-        document.getElementById('saveUserBtn').addEventListener('click', async () => {
-            const name = document.getElementById('newUserName').value.trim();
-            const username = document.getElementById('newUserUsername').value.trim().toLowerCase();
-            const password = document.getElementById('newUserPassword').value.trim();
-            const role = document.getElementById('newUserRole').value;
+        window.handleSaveUser = async function(event) {
+            if (event) event.preventDefault();
+            
+            const btn = document.getElementById('btn-save-user');
+            const nameEl = document.getElementById('user-fullname');
+            const userEl = document.getElementById('user-username');
+            const passEl = document.getElementById('user-password');
+            const roleEl = document.getElementById('user-role');
 
-            if(!name || !username || !password) return alert("يرجى تعبئة جميع الحقول.");
+            const name = nameEl.value.trim();
+            const username = userEl.value.trim().toLowerCase();
+            const password = passEl.value.trim();
+            const role = roleEl.value;
+
+            if(!name || !username || !password) {
+                return alert("يرجى ملء جميع الحقول المطلوبة!");
+            }
             
-            await set(ref(db, `${USERS_PATH}/${username}`), {
-                name, username, password, role, isActive: true
-            });
+            btn.disabled = true;
+            const originalText = btn.innerHTML;
+            btn.innerHTML = 'جاري الحفظ...';
             
-            showToast("تم حفظ المستخدم بنجاح");
-            document.getElementById('newUserName').value = '';
-            document.getElementById('newUserUsername').value = '';
-            document.getElementById('newUserPassword').value = '';
-            document.getElementById('addUserForm').classList.add('hidden');
-        });
+            try {
+                await set(ref(db, `${USERS_PATH}/${username}`), {
+                    name, 
+                    username, 
+                    password, 
+                    role, 
+                    isActive: true,
+                    createdAt: new Date().toISOString()
+                });
+                
+                showToast("تم حفظ المستخدم بنجاح!");
+                nameEl.value = '';
+                userEl.value = '';
+                passEl.value = '';
+                document.getElementById('addUserForm').classList.add('hidden');
+            } catch (err) {
+                console.error(err);
+                alert("حدث خطأ أثناء حفظ المستخدم: " + err.message);
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = originalText;
+            }
+        };
 
     </script>
 </body>
