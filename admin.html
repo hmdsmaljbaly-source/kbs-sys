@@ -1423,128 +1423,84 @@
                 return;
             }
 
-            // 4. Render native HTML document for printing via hidden iframe
-            let printFrame = document.getElementById('pdf-print-frame');
-            if (printFrame) {
-                printFrame.remove();
-            }
-            
-            printFrame = document.createElement('iframe');
-            printFrame.id = 'pdf-print-frame';
-            printFrame.style.position = 'fixed';
-            printFrame.style.right = '0';
-            printFrame.style.bottom = '0';
-            printFrame.style.width = '0';
-            printFrame.style.height = '0';
-            printFrame.style.border = '0';
-            document.body.appendChild(printFrame);
+            // 4. Render using html2pdf for file download
+            const container = document.createElement('div');
+            container.id = 'temp-pdf-render-box';
+            // Important: keep it in DOM but hide it off-screen to avoid blank pages in html2pdf
+            container.style.position = 'absolute';
+            container.style.left = '-9999px';
+            container.style.top = '0';
+            container.style.width = '210mm'; // A4 width
+            container.style.padding = '20px';
+            container.style.fontFamily = "'Tajawal', sans-serif";
+            container.style.direction = 'rtl';
+            container.style.color = '#0f172a';
+            container.style.backgroundColor = 'white'; // ensure background is white
 
-            const htmlContent = `
-            <!DOCTYPE html>
-            <html lang="ar" dir="rtl">
-            <head>
-                <meta charset="UTF-8">
-                <title>الجرد الداخلي - ${new Date().toISOString().slice(0, 10)}</title>
-                <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700;800&display=swap" rel="stylesheet">
-                <style>
-                    @page { size: A4 portrait; margin: 10mm; }
-                    body {
-                        font-family: 'Tajawal', sans-serif;
-                        color: #0f172a;
-                        margin: 0;
-                        padding: 0;
-                        background: white;
-                    }
-                    .header {
-                        display: flex;
-                        justify-content: space-between;
-                        align-items: center;
-                        border-bottom: 2px solid #0f172a;
-                        padding-bottom: 10px;
-                        margin-bottom: 15px;
-                    }
-                    .header h2 { font-size: 18px; font-weight: 800; margin: 0; }
-                    .header p { font-size: 12px; color: #64748b; margin: 0; }
-                    table {
-                        width: 100%;
-                        border-collapse: collapse;
-                        font-size: 11px;
-                        text-align: center;
-                    }
-                    th {
-                        background-color: #f8fafc;
-                        padding: 8px;
-                        border: 1px solid #cbd5e1;
-                        font-weight: bold;
-                        border-bottom: 2px solid #0f172a;
-                    }
-                    td {
-                        padding: 6px 8px;
-                        border: 1px solid #cbd5e1;
-                    }
-                    tr { page-break-inside: avoid; }
-                    .products-cell { text-align: left; direction: ltr; font-size: 10px; }
-                    .products-cell b { color: #4f46e5; }
-                    .cod-cell { font-weight: bold; color: #b91c1c; }
-                    .status-shipped { color: #15803d; font-weight: bold; }
-                    .status-pending { color: #b45309; font-weight: bold; }
-                </style>
-            </head>
-            <body>
-                <div class="header">
-                    <h2>📋 جدول الجرد الشامل للأوردرات والمنتجات</h2>
-                    <p>تاريخ التصدير: ${new Date().toLocaleString('ar-EG')} | إجمالي السجلات: ${rows.length}</p>
+            container.innerHTML = `
+                <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #0f172a; padding-bottom: 8px; margin-bottom: 12px;">
+                    <h2 style="font-size: 16px; font-weight: 800; margin: 0;">📋 جدول الجرد الشامل للأوردرات والمنتجات</h2>
+                    <p style="font-size: 10px; color: #64748b; margin: 0;">تاريخ التصدير: ${new Date().toLocaleString('ar-EG')} | إجمالي السجلات: ${rows.length}</p>
                 </div>
-                <table>
+                <table style="width: 100%; border-collapse: collapse; font-size: 9px; text-align: center; border: 1px solid #cbd5e1;">
                     <thead>
-                        <tr>
-                            <th style="width: 30px;">#</th>
-                            <th style="width: 70px;">رقم الأوردر</th>
-                            <th style="width: 90px;">رقم التتبع</th>
-                            <th style="text-align: left; direction: ltr;">المنتجات (Products)</th>
-                            <th style="width: 70px;">التحصيل (COD)</th>
-                            <th style="width: 70px;">الملاحظات</th>
-                            <th style="width: 60px;">المسؤول</th>
-                            <th style="width: 65px;">الوقت</th>
-                            <th style="width: 65px;">الحالة</th>
+                        <tr style="background-color: #f1f5f9; border-bottom: 2px solid #0f172a;">
+                            <th style="padding: 5px; border: 1px solid #cbd5e1; width: 25px;">#</th>
+                            <th style="padding: 5px; border: 1px solid #cbd5e1; width: 65px;">رقم الأوردر</th>
+                            <th style="padding: 5px; border: 1px solid #cbd5e1; width: 85px;">رقم التتبع</th>
+                            <th style="padding: 5px; border: 1px solid #cbd5e1; text-align: left; direction: ltr;">المنتجات (Products)</th>
+                            <th style="padding: 5px; border: 1px solid #cbd5e1; width: 70px;">التحصيل (COD)</th>
+                            <th style="padding: 5px; border: 1px solid #cbd5e1; width: 70px;">الملاحظات</th>
+                            <th style="padding: 5px; border: 1px solid #cbd5e1; width: 55px;">المسؤول</th>
+                            <th style="padding: 5px; border: 1px solid #cbd5e1; width: 60px;">الوقت</th>
+                            <th style="padding: 5px; border: 1px solid #cbd5e1; width: 65px;">الحالة</th>
                         </tr>
                     </thead>
                     <tbody>
                         ${rows.map((r, i) => `
-                            <tr>
-                                <td>${i + 1}</td>
-                                <td style="font-weight: bold;">${r.orderId || r.id || '-'}</td>
-                                <td style="font-family: monospace;">${r.trackingNumber || r.tracking || '-'}</td>
-                                <td class="products-cell">
+                            <tr style="border-bottom: 1px solid #e2e8f0; page-break-inside: avoid;">
+                                <td style="padding: 4px; border: 1px solid #cbd5e1;">${i + 1}</td>
+                                <td style="padding: 4px; border: 1px solid #cbd5e1; font-weight: bold;">${r.orderId || r.id || '-'}</td>
+                                <td style="padding: 4px; border: 1px solid #cbd5e1; font-family: monospace;">${r.trackingNumber || r.tracking || '-'}</td>
+                                <td style="padding: 4px; border: 1px solid #cbd5e1; text-align: left; direction: ltr; font-size: 8.5px;">
                                     ${Array.isArray(r.items) && r.items.length > 0 
-                                        ? r.items.map(it => `<div>${it.name || ''} <b>x ${it.qty || 1}</b></div>`).join('') 
+                                        ? r.items.map(it => `<div>${it.name || ''} <b style="color: #4f46e5;">x ${it.qty || 1}</b></div>`).join('') 
                                         : (r.products || '-')}
                                 </td>
-                                <td class="cod-cell">${r.cod ? (r.cod.includes('ج') ? r.cod : r.cod + ' ج.م') : 'N/A'}</td>
-                                <td>${r.notes || '—'}</td>
-                                <td>${r.assignedWorker || r.worker || r.scannedBy || '-'}</td>
-                                <td style="font-family: monospace;">${r.scanTime || r.time || '-'}</td>
-                                <td class="${String(r.status).includes('شحن') || r.status === 'Shipped' ? 'status-shipped' : 'status-pending'}">
+                                <td style="padding: 4px; border: 1px solid #cbd5e1; font-weight: bold; color: #b91c1c;">${r.cod ? (r.cod.includes('ج') ? r.cod : r.cod + ' ج.م') : 'N/A'}</td>
+                                <td style="padding: 4px; border: 1px solid #cbd5e1;">${r.notes || '—'}</td>
+                                <td style="padding: 4px; border: 1px solid #cbd5e1;">${r.assignedWorker || r.worker || r.scannedBy || '-'}</td>
+                                <td style="padding: 4px; border: 1px solid #cbd5e1; font-family: monospace;">${r.scanTime || r.time || '-'}</td>
+                                <td style="padding: 4px; border: 1px solid #cbd5e1; font-weight: bold; color: ${String(r.status).includes('شحن') || r.status === 'Shipped' ? '#15803d' : '#b45309'};">
                                     ${r.status || 'قيد الانتظار'}
                                 </td>
                             </tr>
                         `).join('')}
                     </tbody>
                 </table>
-            </body>
-            </html>
             `;
 
-            const doc = printFrame.contentWindow.document;
-            doc.open();
-            doc.write(htmlContent);
-            doc.close();
+            document.body.appendChild(container);
 
-            // Wait a moment for fonts to load, then print natively
-            setTimeout(() => {
-                printFrame.contentWindow.focus();
-                printFrame.contentWindow.print();
-            }, 800);
+            const opt = {
+                margin: [6, 6, 6, 6],
+                filename: `Internal_Audit_Report_${new Date().toISOString().slice(0, 10)}.pdf`,
+                image: { type: 'jpeg', quality: 1.0 },
+                html2canvas: { 
+                    scale: 2, 
+                    useCORS: true, 
+                    logging: false,
+                    windowWidth: container.scrollWidth
+                },
+                jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+            };
+
+            html2pdf().set(opt).from(container).save().then(() => {
+                document.body.removeChild(container);
+            }).catch(err => {
+                console.error("PDF Download Error:", err);
+                if (document.body.contains(container)) document.body.removeChild(container);
+            });
         };
 
         document.getElementById('btnExportAuditPdf').addEventListener('click', () => window.generateInternalAuditPDF('download'));
