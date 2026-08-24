@@ -197,78 +197,73 @@
                 </div>
             </div>
 
-            <!-- Global Date Filter (applies to all cards) -->
-            <div class="bg-white rounded-xl shadow-sm border p-4 mb-6 flex flex-wrap gap-4 items-end">
-                <div>
-                    <label class="block text-xs font-bold text-gray-600 mb-1">تحديد نطاق زمني للتقارير</label>
-                    <div class="flex gap-2">
-                        <input type="date" id="repStart" class="border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:border-blue-500 font-bold text-gray-700">
-                        <span class="self-center text-gray-400 font-bold">إلى</span>
-                        <input type="date" id="repEnd" class="border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:border-blue-500 font-bold text-gray-700">
+            <!-- Compact Action Toolbar -->
+            <div class="bg-white rounded-xl shadow-sm border p-3 mb-6 flex flex-col lg:flex-row items-center justify-between gap-4">
+                <!-- Right Side: Filters -->
+                <div class="flex flex-wrap items-center gap-3">
+                    <div class="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-lg px-2 py-1">
+                        <input type="date" id="repStart" class="bg-transparent text-sm font-bold text-gray-700 outline-none">
+                        <span class="text-gray-400 font-bold">-</span>
+                        <input type="date" id="repEnd" class="bg-transparent text-sm font-bold text-gray-700 outline-none">
+                    </div>
+                    <select id="reportStatusFilter" class="py-1.5 px-3 border border-gray-200 rounded-lg text-sm font-bold text-gray-700 bg-gray-50 hover:bg-white focus:ring-2 focus:ring-blue-500 outline-none">
+                        <option value="all">كافة الأوردرات</option>
+                        <option value="Shipped">المشحون فقط</option>
+                        <option value="Pending">المعلق قيد الانتظار</option>
+                        <option value="Returns">المرتجعات</option>
+                    </select>
+                    <div class="relative w-48 sm:w-64">
+                        <input type="text" id="reportSearch" placeholder="بحث شامل..." class="w-full pl-3 pr-8 py-1.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+                        <i data-lucide="search" class="w-3.5 h-3.5 text-gray-400 absolute right-2.5 top-2.5"></i>
+                    </div>
+                    <div class="px-2 py-1 bg-blue-50 text-blue-700 rounded-lg text-xs font-bold border border-blue-100" id="reportsCountStatus">
+                        جاري التحميل...
                     </div>
                 </div>
-                <div class="mr-auto self-center text-sm font-bold text-gray-500" id="reportsCountStatus">
-                    جاري تحميل الأرشيف...
+
+                <!-- Left Side: Actions -->
+                <div class="flex flex-wrap items-center gap-2">
+                    <button id="btnExportRepExcel" class="bg-green-600 text-white px-3 py-1.5 rounded-lg text-sm hover:bg-green-700 font-bold flex items-center gap-1 shadow-sm">
+                        <i data-lucide="file-spreadsheet" class="w-4 h-4"></i> إكسيل
+                    </button>
+                    <div class="flex rounded-lg shadow-sm border overflow-hidden">
+                        <button id="btnExportManifestPdf" class="bg-red-600 text-white px-3 py-1.5 text-sm hover:bg-red-700 font-bold flex items-center gap-1 border-r border-red-700" title="تحميل مانيفست (PDF)">
+                            <i data-lucide="truck" class="w-4 h-4"></i>
+                        </button>
+                        <button id="btnPrintManifest" class="bg-slate-800 text-white px-3 py-1.5 text-sm hover:bg-slate-900 font-bold flex items-center gap-1" title="طباعة مانيفست">
+                            <i data-lucide="printer" class="w-4 h-4"></i> مانيفست
+                        </button>
+                    </div>
+                    <div class="flex rounded-lg shadow-sm border overflow-hidden">
+                        <button id="btnExportAuditPdf" class="bg-amber-500 text-white px-3 py-1.5 text-sm hover:bg-amber-600 font-bold flex items-center gap-1 border-r border-amber-600" title="تحميل الجرد الداخلي (PDF)">
+                            <i data-lucide="clipboard-check" class="w-4 h-4"></i>
+                        </button>
+                        <button id="btnPrintAudit" class="bg-slate-800 text-white px-3 py-1.5 text-sm hover:bg-slate-900 font-bold flex items-center gap-1" title="طباعة الجرد الداخلي">
+                            <i data-lucide="printer" class="w-4 h-4"></i> جرد داخلي
+                        </button>
+                    </div>
                 </div>
             </div>
 
-            <!-- Three Structured Cards -->
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                
-                <!-- Card 1: Courier Manifest -->
-                <div class="bg-white rounded-xl shadow-sm border overflow-hidden flex flex-col hover:border-red-300 transition-colors">
-                    <div class="p-5 border-b bg-red-50/50">
-                        <h3 class="text-lg font-bold text-red-800 flex items-center gap-2 mb-2"><i data-lucide="truck" class="w-5 h-5"></i> مانيفست تسليم المندوب الرسمي</h3>
-                        <p class="text-sm text-red-600/80">المستند الرسمي الذي يحتوي على الأرقام التتبعية، الشركة الناقلة، التوقيعات. (للمشحون فقط)</p>
-                    </div>
-                    <div class="p-5 flex flex-col gap-3 flex-1 justify-center">
-                        <button id="btnExportManifestPdf" class="w-full bg-red-600 text-white py-3 rounded-lg text-sm font-bold hover:bg-red-700 transition flex items-center justify-center gap-2 shadow-sm">
-                            <i data-lucide="download" class="w-4 h-4"></i> تحميل PDF
-                        </button>
-                        <button id="btnPrintManifest" class="w-full bg-slate-800 text-white py-3 rounded-lg text-sm font-bold hover:bg-slate-900 transition flex items-center justify-center gap-2 shadow-sm">
-                            <i data-lucide="printer" class="w-4 h-4"></i> طباعة مباشرة
-                        </button>
-                    </div>
+            <!-- Historical Table -->
+            <div class="bg-white rounded-xl shadow-sm border overflow-hidden">
+                <div class="overflow-x-auto h-[65vh] overflow-y-auto">
+                    <table class="w-full text-right text-sm">
+                        <thead class="bg-gray-50 text-gray-500 sticky top-0 shadow-sm z-10">
+                            <tr>
+                                <th class="p-4 font-bold border-b border-gray-100">رقم الأوردر</th>
+                                <th class="p-4 font-bold border-b border-gray-100">رقم التتبع</th>
+                                <th class="p-4 font-bold border-b border-gray-100">التحصيل (COD)</th>
+                                <th class="p-4 font-bold border-b border-gray-100">العامل المعين</th>
+                                <th class="p-4 font-bold border-b border-gray-100">المنتجات (Products)</th>
+                                <th class="p-4 font-bold border-b border-gray-100">الملاحظات</th>
+                                <th class="p-4 font-bold border-b border-gray-100 text-center">الحالة</th>
+                                <th class="p-4 font-bold border-b border-gray-100 text-center">تفاصيل الإسكان</th>
+                            </tr>
+                        </thead>
+                        <tbody id="reportsTableBody" class="divide-y divide-gray-100"></tbody>
+                    </table>
                 </div>
-
-                <!-- Card 2: Internal Audit -->
-                <div class="bg-white rounded-xl shadow-sm border overflow-hidden flex flex-col hover:border-amber-300 transition-colors">
-                    <div class="p-5 border-b bg-amber-50/50">
-                        <h3 class="text-lg font-bold text-amber-800 flex items-center gap-2 mb-2"><i data-lucide="clipboard-check" class="w-5 h-5"></i> تقرير الإغلاق والجرد الداخلي</h3>
-                        <p class="text-sm text-amber-600/80">مستند جرد داخلي شامل (المنتجات، التحصيل، الملاحظات وتفاصيل الإسكان والتغليف).</p>
-                    </div>
-                    <div class="p-5 flex flex-col gap-3 flex-1 justify-center">
-                        <button id="btnExportAuditPdf" class="w-full bg-amber-500 text-white py-3 rounded-lg text-sm font-bold hover:bg-amber-600 transition flex items-center justify-center gap-2 shadow-sm">
-                            <i data-lucide="download" class="w-4 h-4"></i> تحميل PDF الداخلي
-                        </button>
-                        <button id="btnPrintAudit" class="w-full bg-slate-800 text-white py-3 rounded-lg text-sm font-bold hover:bg-slate-900 transition flex items-center justify-center gap-2 shadow-sm">
-                            <i data-lucide="printer" class="w-4 h-4"></i> طباعة داخلي
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Card 3: Filtered Excel -->
-                <div class="bg-gray-900 rounded-xl shadow-sm border border-gray-800 overflow-hidden flex flex-col">
-                    <div class="p-5 border-b border-gray-800">
-                        <h3 class="text-lg font-bold text-white flex items-center gap-2 mb-2"><i data-lucide="file-spreadsheet" class="w-5 h-5 text-green-400"></i> تصدير كشوفات شيت الإكسيل</h3>
-                        <p class="text-sm text-gray-400">تصدير بيانات الأرشيف والأوردرات إلى شيت Excel ديناميكي بناءً على الفلتر.</p>
-                    </div>
-                    <div class="p-5 flex flex-col gap-4 flex-1 justify-center">
-                        <div>
-                            <label class="block text-xs font-bold text-gray-400 mb-2">تصفية حسب الحالة</label>
-                            <select id="exportExcelStatus" class="w-full bg-gray-800 border-gray-700 text-white rounded-lg p-2.5 text-sm font-bold focus:ring-2 focus:ring-green-500 outline-none">
-                                <option value="all">كافة الأوردرات (All)</option>
-                                <option value="Shipped">المشحون فقط (Shipped)</option>
-                                <option value="Pending">المعلق قيد الانتظار (Pending)</option>
-                                <option value="Returns">المرتجعات فقط (Returns)</option>
-                            </select>
-                        </div>
-                        <button id="btnExportRepExcel" class="w-full bg-green-600 text-white py-3 rounded-lg text-sm font-bold hover:bg-green-700 transition flex items-center justify-center gap-2 shadow-sm mt-auto">
-                            <i data-lucide="download" class="w-4 h-4"></i> تحميل شيت إكسيل
-                        </button>
-                    </div>
-                </div>
-
             </div>
         </section>
 
@@ -954,36 +949,130 @@
         // 6. View 3: Reports
         function getFilteredReports() {
             const combinedOrders = { ...archivedOrders, ...allOrders };
-            const ordersArray = Object.values(combinedOrders);
+            const ordersArray = Object.values(combinedOrders).sort((a,b) => {
+                const da = new Date(a.scanTime || a.createdAt || 0);
+                const db = new Date(b.scanTime || b.createdAt || 0);
+                return db - da; // sort newest first
+            });
             
             let start = null, end = null;
-            const s = document.getElementById('repStart').value; 
-            const e = document.getElementById('repEnd').value;
+            const s = document.getElementById('repStart') ? document.getElementById('repStart').value : ''; 
+            const e = document.getElementById('repEnd') ? document.getElementById('repEnd').value : '';
             if(s) start = new Date(s); 
             if(e) { end = new Date(e); end.setHours(23,59,59,999); }
             
-            const statusFilter = document.getElementById('exportExcelStatus') ? document.getElementById('exportExcelStatus').value : 'all';
+            const statusFilter = document.getElementById('reportStatusFilter') ? document.getElementById('reportStatusFilter').value : 'all';
+            const searchQ = document.getElementById('reportSearch') ? document.getElementById('reportSearch').value.toLowerCase() : '';
 
             return ordersArray.filter(o => {
                 const dateStr = o.scanTime || o.createdAt;
-                if (!dateStr) return false;
-                const d = new Date(dateStr);
+                const d = dateStr ? new Date(dateStr) : null;
                 
-                const matchDate = (!start || d >= start) && (!end || d <= end);
+                const matchDate = (!start && !end) || (d && (!start || d >= start) && (!end || d <= end));
                 const matchStatus = (statusFilter === 'all') || (o.status === statusFilter);
                 
-                return matchDate && matchStatus;
+                let matchSearch = true;
+                if (searchQ) {
+                    const matchId = String(o.orderId || '').toLowerCase().includes(searchQ);
+                    const matchTracking = String(o.trackingNumber || '').toLowerCase().includes(searchQ);
+                    const matchProducts = String(o.products || '').toLowerCase().includes(searchQ);
+                    const matchWorker = String(o.assignedName || o.assignedTo || '').toLowerCase().includes(searchQ);
+                    matchSearch = matchId || matchTracking || matchProducts || matchWorker;
+                }
+                
+                return matchDate && matchStatus && matchSearch;
             });
         }
 
         window.renderReportsStatus = function() {
-            const el = document.getElementById('reportsCountStatus');
-            if(!el) return;
-            const total = Object.keys(archivedOrders).length + Object.keys(allOrders).length;
-            el.innerHTML = `تم تحميل <span class="text-blue-600">${total}</span> أوردر (مدمج من الأرشيف والنشط)`;
+            renderReportsTable();
         };
-        document.getElementById('repStart').addEventListener('change', () => setReportFilter('custom'));
-        document.getElementById('repEnd').addEventListener('change', () => setReportFilter('custom'));
+
+        function renderReportsTable() {
+            const el = document.getElementById('reportsCountStatus');
+            const tbody = document.getElementById('reportsTableBody');
+            if(!tbody) return;
+            
+            const filtered = getFilteredReports();
+            if(el) {
+                el.innerHTML = `تم تحميل <span class="text-blue-600">${filtered.length}</span> أوردر`;
+            }
+            
+            tbody.innerHTML = '';
+            
+            filtered.forEach(order => {
+                // Status Badge
+                let statusHtml = `<div class="inline-flex items-center gap-2 px-3 py-1 rounded-xl bg-amber-50 text-amber-600 font-bold border border-amber-200 text-xs shadow-sm"><i data-lucide="clock" class="w-3 h-3"></i> قيد الانتظار</div>`;
+                if(order.status === 'Shipped') statusHtml = `<div class="inline-flex items-center gap-2 px-3 py-1 rounded-xl bg-green-50 text-green-700 font-bold border border-green-200 text-xs shadow-sm"><i data-lucide="check-circle" class="w-3 h-3"></i> تم الشحن</div>`;
+                
+                // Products (Badges)
+                let productsDisplay = order.products || '';
+                if (order.parsedProducts && order.parsedProducts.length > 0) {
+                    productsDisplay = `<div class="flex flex-col bg-white border border-gray-200 rounded-xl p-1 shadow-sm w-full max-w-md">` + 
+                        order.parsedProducts.map(p => `
+                        <div class="flex items-center justify-between gap-4 p-2 border-b border-gray-100 last:border-0 hover:bg-gray-50 rounded-lg transition-colors group/item">
+                            <span class="bg-indigo-50 text-indigo-700 border border-indigo-100 px-2.5 py-1 rounded-lg text-xs font-bold shrink-0 shadow-sm" dir="rtl">
+                                العدد: ${p.quantity}
+                            </span>
+                            <span class="text-gray-800 font-semibold text-sm text-left product-name w-full leading-snug whitespace-normal" dir="ltr" style="font-family: 'Inter', sans-serif;">
+                                ${p.name}
+                            </span>
+                        </div>
+                    `).join('') + `</div>`;
+                }
+
+                // Assigned Worker Badge
+                let workerHtml = `<span class="text-gray-400 font-bold">-</span>`;
+                if(order.assignedName || order.assignedTo) {
+                    workerHtml = `<div class="inline-flex items-center gap-1.5 bg-purple-50 text-purple-700 border border-purple-100 px-2.5 py-1 rounded-lg text-xs font-bold shadow-sm">
+                                    <i data-lucide="user" class="w-3.5 h-3.5"></i> ${order.assignedName || order.assignedTo}
+                                  </div>`;
+                }
+
+                // Scan Details
+                let scanDetailsHtml = `<div class="text-xs text-gray-400 font-bold bg-gray-50 border px-2 py-1 rounded-lg inline-block shadow-sm">لم يتم الإسكان</div>`;
+                if(order.scanTime) {
+                    scanDetailsHtml = `
+                        <div class="flex flex-col gap-1 items-end text-xs">
+                            <span class="text-gray-800 font-bold bg-gray-100 px-2 py-0.5 rounded shadow-sm">${order.scannedByUsername || order.scannedBy || 'مجهول'}</span>
+                            <span class="text-gray-500 font-medium">${new Date(order.scanTime).toLocaleString('en-GB')}</span>
+                        </div>
+                    `;
+                }
+
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-blue-50/50 transition-colors group";
+                tr.innerHTML = `
+                    <td class="p-4 align-top">
+                        <div class="font-black text-gray-800 text-base">#${order.orderId || '-'}</div>
+                    </td>
+                    <td class="p-4 align-top">
+                        <div class="font-mono text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded border shadow-inner inline-block" dir="ltr">
+                            ${order.trackingNumber || '-'}
+                        </div>
+                    </td>
+                    <td class="p-4 align-top">
+                        <div class="font-black text-red-600 bg-red-50 px-2 py-1 rounded border border-red-100 inline-block shadow-sm" dir="ltr">
+                            ${order.cod ? Number(order.cod).toLocaleString('en-US') + ' ج.م' : 'N/A'}
+                        </div>
+                    </td>
+                    <td class="p-4 align-top">${workerHtml}</td>
+                    <td class="p-4 align-top w-1/3">${productsDisplay}</td>
+                    <td class="p-4 align-top text-gray-600 text-xs">
+                        <div class="bg-gray-50 p-2 rounded-lg border shadow-inner min-h-[40px] whitespace-pre-wrap">${order.notes || ''}</div>
+                    </td>
+                    <td class="p-4 align-top text-center">${statusHtml}</td>
+                    <td class="p-4 align-top text-center">${scanDetailsHtml}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+            lucide.createIcons();
+        }
+
+        if(document.getElementById('repStart')) document.getElementById('repStart').addEventListener('change', window.renderReportsStatus);
+        if(document.getElementById('repEnd')) document.getElementById('repEnd').addEventListener('change', window.renderReportsStatus);
+        if(document.getElementById('reportStatusFilter')) document.getElementById('reportStatusFilter').addEventListener('change', window.renderReportsStatus);
+        if(document.getElementById('reportSearch')) document.getElementById('reportSearch').addEventListener('input', window.renderReportsStatus);
 
         document.getElementById('btnExportRepExcel').addEventListener('click', () => {
             const data = getFilteredReports().map(o => ({
