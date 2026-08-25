@@ -1396,13 +1396,14 @@
             // 1. استخراج السجلات المفلترة حالياً (من الذاكرة أولاً ثم قراءة مباشرة من الجدول كـ Fallback)
             let rows = [];
 
-            if (window.currentFilteredReportsList && window.currentFilteredReportsList.length > 0) {
-                rows = window.currentFilteredReportsList;
-            } else if (window.reportsDataList && window.reportsDataList.length > 0) {
-                rows = window.reportsDataList;
+            // currentFilteredReportsList is defined in the same script scope
+            if (typeof currentFilteredReportsList !== 'undefined' && currentFilteredReportsList.length > 0) {
+                rows = currentFilteredReportsList;
+            } else if (typeof reportsDataList !== 'undefined' && reportsDataList.length > 0) {
+                rows = reportsDataList;
             } else {
                 // قراءة مباشرة من صفوف الجدول المعروضة حالياً على الشاشة
-                const trElements = document.querySelectorAll('#reports-table-body tr:not(.empty-row)');
+                const trElements = document.querySelectorAll('#reportsTableBody tr:not(.empty-row), #ordersTableBody tr:not(.empty-row)');
                 trElements.forEach(tr => {
                     const cells = tr.querySelectorAll('td');
                     if (cells.length >= 6) {
