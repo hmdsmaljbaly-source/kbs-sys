@@ -101,6 +101,13 @@
         });
     </script>
 
+
+    <!-- pdfmake CDN for High-Volume Vector PDFs -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"></script>
+    
+    <!-- Custom PDF Generator Script -->
+    <script src="js/pdf-generator.js"></script>
 </head>
 <body class="bg-gray-100 min-h-screen flex">
 
@@ -313,9 +320,15 @@
                 <!-- Left Side: Actions -->
                 <div class="flex flex-wrap items-center gap-2">
 
+                    
                     <button id="btnExportRepExcel" class="bg-green-600 text-white px-3 py-1.5 rounded-lg text-sm hover:bg-green-700 font-bold flex items-center gap-1 shadow-sm">
                         <i data-lucide="file-spreadsheet" class="w-4 h-4"></i> إكسيل
                     </button>
+                    <button id="btnExportAuditPdf" onclick="downloadFilteredAuditPDF()" class="bg-rose-600 hover:bg-rose-700 text-white font-bold py-1.5 px-3 rounded-lg text-sm flex items-center gap-1 shadow-sm">
+                        <i data-lucide="file-down" class="w-4 h-4"></i>
+                        <span>تحميل PDF</span>
+                    </button>
+
                     
                 </div>
             </div>
