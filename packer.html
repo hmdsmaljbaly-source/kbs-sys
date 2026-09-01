@@ -27,210 +27,296 @@
             from { opacity: 0; transform: translateY(5px); }
             to { opacity: 1; transform: translateY(0); }
         }
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease-in-out;
+        }
+        .overlay.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        .overlay h2 {
+            font-size: 3rem;
+            font-weight: bold;
+            margin-bottom: 1rem;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+            text-align: center;
+        }
+        .overlay p {
+            font-size: 1.5rem;
+            font-weight: 500;
+        }
+        .overlay-success { background-color: rgba(22, 163, 74, 0.95); color: white; }
+        .overlay-duplicate { background-color: rgba(234, 179, 8, 0.95); color: white; }
+        .overlay-leo { background-color: rgba(234, 88, 12, 0.95); color: white; }
+        .overlay-error { background-color: rgba(220, 38, 38, 0.95); color: white; }
+        .overlay-not-in-batch { background-color: rgba(220, 38, 38, 0.95); color: white; }
     </style>
-
-    <!-- Robust View Switcher -->
     <script>
-        window.switchView = function(viewId, isPacker = false) {
+        window.switchView = function(viewId) {
             try {
-                // Determine selectors based on whether it's packer or admin
-                const sectionSelector = isPacker ? '.view-section' : '.view-section';
-                const navSelector = '.nav-item';
-
-                // 1. Hide all sections & remove active class from all nav items
-                document.querySelectorAll(sectionSelector).forEach(el => {
+                document.querySelectorAll('.view-section').forEach(el => {
                     el.classList.add('hidden');
                     el.classList.remove('active');
                 });
-                
-                document.querySelectorAll(navSelector).forEach(el => {
+                document.querySelectorAll('.nav-item').forEach(el => {
                     el.classList.remove('active', 'bg-white', 'shadow-sm');
                 });
 
-                // 2. Unhide target section
-                const targetSection = document.getElementById(isPacker ? viewId : `view-${viewId}`);
+                const targetSection = document.getElementById(viewId);
                 if (targetSection) {
                     targetSection.classList.remove('hidden');
                     targetSection.classList.add('active');
-                } else {
-                    console.warn(`Section ${viewId} not found in DOM.`);
                 }
 
-                // 3. Highlight target nav button
-                let targetNav;
-                if (isPacker) {
-                    const navs = document.querySelectorAll(`.nav-item[data-target="${viewId}"]`);
-                    navs.forEach(n => n.classList.add('active'));
-                    if(navs.length > 0) targetNav = navs[0];
-                } else {
-                    targetNav = document.getElementById(`nav-${viewId}`);
-                    if (targetNav) targetNav.classList.add('active');
-                }
-                
-                if (!targetNav && !isPacker) {
-                    console.warn(`Nav button nav-${viewId} not found in DOM.`);
-                }
+                document.querySelectorAll(`.nav-item[data-target="${viewId}"]`).forEach(el => {
+                    el.classList.add('active');
+                });
 
-                // 4. Re-render Lucide icons safely
-                if (window.lucide && typeof window.lucide.createIcons === 'function') {
-                    window.lucide.createIcons();
-                }
-            } catch (err) {
-                console.warn('Non-fatal error in switchView:', err);
+                if(window.lucide) window.lucide.createIcons();
+            } catch(e) {
+                console.error("Navigation error:", e);
             }
         };
 
-        // Attach global listener for packer.html data-target approach
         document.addEventListener('DOMContentLoaded', () => {
-            document.querySelectorAll('.nav-item[data-target]').forEach(btn => {
+            document.querySelectorAll('.nav-item').forEach(btn => {
                 btn.addEventListener('click', (e) => {
-                    // Prevent bubbling if necessary
-                    const targetId = btn.getAttribute('data-target');
-                    if (targetId) window.switchView(targetId, true);
+                    const target = e.currentTarget.getAttribute('data-target');
+                    if (target) window.switchView(target);
                 });
-            });
-            
-            // Ensure initial state correctly applies 'hidden'
-            document.querySelectorAll('.view-section:not(.active)').forEach(el => {
-                el.classList.add('hidden');
-            });
-            document.querySelectorAll('.view-section.active').forEach(el => {
-                el.classList.remove('hidden');
             });
         });
     </script>
-
 </head>
-<body class="bg-gray-100 min-h-screen">
+<body class="bg-gray-100 text-gray-800">
 
-    
     <!-- Overlays -->
-    <div class="overlay overlay-success"><i data-lucide="check-circle" class="w-32 h-32 mb-4"></i><h2>تم المسح بنجاح!</h2></div>
-    <div class="overlay overlay-duplicate"><i data-lucide="alert-triangle" class="w-32 h-32 mb-4"></i><h2>تم مسحه مسبقاً!</h2></div>
-    <div class="overlay overlay-leo"><i data-lucide="shield-alert" class="w-32 h-32 mb-4"></i><h2>تحذير: LEO Lock!</h2><p>هذا الأوردر محظور من الشحن مؤقتاً.</p></div>
-    <div class="overlay overlay-error"><i data-lucide="x-circle" class="w-32 h-32 mb-4"></i><h2>باركود غير صالح!</h2></div>
-    <div class="overlay overlay-not-in-batch"><i data-lucide="x-octagon" class="w-32 h-32 mb-4"></i><h2>⚠️ هذا الأوردر غير مخصص لك في هذه الدفعة!</h2></div>
+    <div class="overlay overlay-success">
+        <i data-lucide="check-circle" class="w-32 h-32 mb-4 text-white"></i>
+        <h2>تم المسح بنجاح!</h2>
+    </div>
+    <div class="overlay overlay-duplicate">
+        <i data-lucide="alert-triangle" class="w-32 h-32 mb-4 text-white"></i>
+        <h2>تم مسحه مسبقاً!</h2>
+    </div>
+    <div class="overlay overlay-leo">
+        <i data-lucide="shield-alert" class="w-32 h-32 mb-4 text-white"></i>
+        <h2>تحذير: LEO Lock!</h2>
+        <p>هذا الأوردر محظور من الشحن مؤقتاً.</p>
+    </div>
+    <div class="overlay overlay-error">
+        <i data-lucide="x-circle" class="w-32 h-32 mb-4 text-white"></i>
+        <h2>باركود غير صالح!</h2>
+    </div>
+    <div class="overlay overlay-not-in-batch">
+        <i data-lucide="x-octagon" class="w-32 h-32 mb-4 text-white"></i>
+        <h2>⚠️ هذا الأوردر غير مخصص لك في هذه الدفعة!</h2>
+    </div>
 
+    <!-- Header / Navbar -->
+    <header class="bg-white shadow-sm border-b sticky top-0 z-40">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <div class="flex items-center gap-6">
+                    <div class="flex items-center gap-2">
+                        <div class="bg-blue-600 p-2 rounded-lg"><i data-lucide="box" class="w-6 h-6 text-white"></i></div>
+                        <span class="font-bold text-xl text-gray-800 hidden sm:inline">محطة التغليف</span>
+                    </div>
+                    <!-- Navigation Tabs -->
+                    <div class="hidden md:flex space-x-2 space-x-reverse h-16 items-end">
+                        <button class="nav-item active px-4 py-3 text-sm font-bold text-gray-600 hover:text-blue-600 hover:bg-gray-50 rounded-t-lg transition-colors flex items-center gap-2" data-target="view-scanner">
+                            <i data-lucide="scan-line" class="w-4 h-4"></i> محطة الإسكان
+                        </button>
+                        <button class="nav-item px-4 py-3 text-sm font-bold text-gray-600 hover:text-blue-600 hover:bg-gray-50 rounded-t-lg transition-colors flex items-center gap-2" data-target="view-printer">
+                            <i data-lucide="printer" class="w-4 h-4"></i> محطة الطباعة والدمج
+                        </button>
+                    </div>
+                </div>
+                <div class="flex items-center gap-3">
+                    <span id="userNameDisplay" class="text-sm font-bold text-gray-600 bg-gray-100 px-3 py-1.5 rounded-full"></span>
+                    <button id="logoutBtn" class="text-red-500 hover:text-red-700 bg-red-50 hover:bg-red-100 p-2 rounded-lg transition" title="تسجيل الخروج">
+                        <i data-lucide="log-out" class="w-5 h-5"></i>
+                    </button>
+                </div>
             </div>
-        </div>
-
-        <!-- Tab 2: Printing & Merging Hub -->
-        <div id="view-printer" class="view-section">
-            
-            <!-- Single Print (Batch) -->
-            <div class="bg-white rounded-xl shadow-sm border p-6 mb-8 border-l-4 border-blue-500">
-                <div class="flex items-center mb-4">
-                    <i data-lucide="printer" class="text-blue-600 w-6 h-6 ml-2"></i>
-                    <h2 class="text-xl font-bold text-gray-800">طباعة بوالص الدفعة المستلمة</h2>
-                </div>
-                <p class="text-gray-600 mb-6">اضغط على الزر أدناه لطباعة جميع بوالص الدفعة المعينة لك وراء بعضها. سيتم دمج الملفات وإرسالها للطابعة فوراً.</p>
-                
-                <div class="progress-bar-container mb-4 hidden" id="printProgressContainer">
-                    <div class="progress-bar-fill" id="printProgressBar" style="width: 0%;">0%</div>
-                </div>
-
-                <button id="printBatchBtn" disabled class="w-full md:w-auto px-8 flex items-center justify-center py-3 border border-transparent rounded-lg shadow-sm text-lg font-bold text-white bg-blue-600 hover:bg-blue-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed">
-                    <i data-lucide="file-text" class="w-5 h-5 ml-2"></i>
-                    <span>جاري تحميل البيانات...</span>
+            <!-- Mobile Tabs -->
+            <div class="flex md:hidden border-t">
+                <button class="nav-item active flex-1 px-2 py-3 text-xs font-bold text-gray-600 flex items-center justify-center gap-1 whitespace-nowrap" data-target="view-scanner">
+                    <i data-lucide="scan-line" class="w-4 h-4"></i> الإسكان
+                </button>
+                <button class="nav-item flex-1 px-2 py-3 text-xs font-bold text-gray-600 flex items-center justify-center gap-1 whitespace-nowrap" data-target="view-printer">
+                    <i data-lucide="printer" class="w-4 h-4"></i> الطباعة
                 </button>
             </div>
+        </div>
+    </header>
 
-            <!-- Custom Invoices Merger -->
-            <div class="bg-white rounded-xl shadow-sm border p-6 border-l-4 border-purple-500">
-                <div class="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4">
-                    <div class="flex items-center">
-                        <i data-lucide="files" class="text-purple-600 w-6 h-6 ml-2"></i>
-                        <div>
-                            <h2 class="text-xl font-bold text-gray-800">دمج وطباعة الفواتير المخصصة</h2>
-                            <p class="text-sm text-gray-500">اسحب وأفلت الفواتير بصيغة PDF لدمجها وطباعتها</p>
-                        </div>
-                    </div>
-                    <div class="flex items-center gap-3">
-                        <label class="flex items-center gap-2 text-sm text-gray-600 font-bold cursor-pointer">
-                            <input type="checkbox" id="autoClearCheckbox" checked class="w-4 h-4 text-purple-600 rounded border-gray-300 focus:ring-purple-500">
-                            مسح القائمة بعد الطباعة
-                        </label>
-                    </div>
+    <main class="p-4 md:p-8 max-w-7xl mx-auto space-y-6">
+        
+        <!-- Tab 1: Scanning Station -->
+        <div id="view-scanner" class="view-section active">
+            <!-- KPIs -->
+            <div class="grid grid-cols-3 gap-3 md:gap-6 mb-6">
+                <div class="bg-white rounded-xl shadow-sm border p-4 text-center">
+                    <div class="text-xs md:text-sm text-gray-500 font-bold mb-1">إجمالي الدفعة</div>
+                    <div id="statTotal" class="text-2xl md:text-4xl font-black text-gray-800">0</div>
                 </div>
-
-                <!-- Dropzone -->
-                <div id="dropzone" class="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center bg-gray-50 transition-colors mb-6 cursor-pointer hover:border-purple-400 hover:bg-purple-50">
-                    <input type="file" id="fileInput" multiple accept=".pdf" class="hidden">
-                    <i data-lucide="upload-cloud" class="w-12 h-12 text-gray-400 mx-auto mb-3"></i>
-                    <p class="text-gray-600 font-bold mb-1">اسحب وأفلت ملفات الـ PDF هنا</p>
-                    <p class="text-gray-400 text-sm">أو اضغط لاختيار الملفات (الحد الأقصى 200 ملف)</p>
+                <div class="bg-white rounded-xl shadow-sm border p-4 text-center border-b-4 border-b-green-500">
+                    <div class="text-xs md:text-sm text-gray-500 font-bold mb-1">المكتملة</div>
+                    <div id="statCompleted" class="text-2xl md:text-4xl font-black text-green-600">0</div>
                 </div>
+                <div class="bg-white rounded-xl shadow-sm border p-4 text-center border-b-4 border-b-orange-500">
+                    <div class="text-xs md:text-sm text-gray-500 font-bold mb-1">المتبقية</div>
+                    <div id="statPending" class="text-2xl md:text-4xl font-black text-orange-500">0</div>
+                </div>
+            </div>
 
-                <!-- Files List & Actions -->
-                <div class="bg-gray-50 rounded-xl border p-4">
-                    <div class="flex flex-col md:flex-row justify-between items-center mb-4 gap-4 pb-4 border-b">
-                        <div class="flex items-center gap-4 w-full md:w-auto">
-                            <span class="bg-purple-100 text-purple-800 text-xs font-bold px-3 py-1.5 rounded-full">
-                                العدد: <span id="fileCount">0</span>
-                            </span>
-                            <span class="bg-gray-200 text-gray-700 text-xs font-bold px-3 py-1.5 rounded-full">
-                                الحجم: <span id="totalSize">0 MB</span>
-                            </span>
-                        </div>
-                        <div class="flex gap-2 w-full md:w-auto">
-                            <button id="clearAllBtn" class="px-4 py-2 text-sm font-bold text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors flex items-center justify-center gap-2 flex-1 md:flex-none">
-                                <i data-lucide="trash-2" class="w-4 h-4"></i> مسح الكل
-                            </button>
-                            <button id="printCustomBtn" disabled class="px-6 py-2 text-sm font-bold text-white bg-purple-600 hover:bg-purple-700 rounded-lg transition-colors flex items-center justify-center gap-2 flex-1 md:flex-none disabled:bg-gray-400 disabled:cursor-not-allowed shadow-sm">
-                                <i data-lucide="printer" class="w-4 h-4"></i> دمج وطباعة
-                            </button>
-                        </div>
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- Scanner -->
+                <div class="bg-white rounded-xl shadow-sm border p-6 flex flex-col items-center justify-center min-h-[400px]">
+                    <div class="text-center mb-6">
+                        <h2 class="text-2xl font-bold text-gray-800">جاهز للإسكان</h2>
+                        <p class="text-gray-500 mt-2 text-sm">استخدم جهاز الباركود أو كاميرا الهاتف</p>
                     </div>
-                    
-                    <!-- Progress Bar (Custom) -->
-                    <div id="customProgressContainer" class="hidden mb-4 bg-gray-200 rounded-full h-4 overflow-hidden relative">
-                        <div id="customProgressBar" class="bg-purple-600 h-full w-0 transition-all duration-300 ease-out flex items-center justify-center text-[10px] text-white font-bold">0%</div>
+                    <div id="reader" class="w-full max-w-sm overflow-hidden rounded-xl border-4 border-dashed border-gray-200 bg-gray-50"></div>
+                </div>
+                
+                <!-- Last Scanned -->
+                <div class="bg-white rounded-xl shadow-sm border flex flex-col h-full overflow-hidden">
+                    <div class="bg-gray-50 border-b p-4">
+                        <h3 class="text-lg font-bold text-gray-800 flex items-center gap-2">
+                            <i data-lucide="clipboard-check" class="w-5 h-5 text-blue-600"></i>
+                            آخر أوردر تم فحصه
+                        </h3>
                     </div>
-
-                    <!-- Sortable List -->
-                    <div id="fileList" class="space-y-2 max-h-[400px] overflow-y-auto pr-2">
-                        <!-- Files will be injected here -->
-                        <div class="text-center text-gray-400 py-8 text-sm" id="emptyState">
-                            لا توجد ملفات جاهزة للطباعة
-                        </div>
+                    <div id="lastScanDetails" class="p-6 flex-1 flex flex-col items-center justify-center text-center text-gray-400">
+                        <i data-lucide="package-search" class="w-16 h-16 mb-4 opacity-30"></i>
+                        <p class="font-bold">في انتظار الإسكان...</p>
                     </div>
                 </div>
             </div>
         </div>
 
-        </main>
+        <!-- Tab 2: Print Hub -->
+        <div id="view-printer" class="view-section hidden">
+            
+            <!-- Assigned Batch Auto-Print -->
+            <div class="bg-white rounded-xl shadow-sm border overflow-hidden mb-6">
+                <div class="p-4 border-b bg-blue-50 flex items-center gap-3">
+                    <i data-lucide="printer" class="w-6 h-6 text-blue-600"></i>
+                    <h2 class="font-bold text-gray-800 text-lg">طباعة بوالص الدفعة (Single-Print)</h2>
+                </div>
+                <div class="p-6">
+                    <div id="printProgressContainer" class="hidden mb-4 bg-gray-200 rounded-full h-4 overflow-hidden relative">
+                        <div id="printProgressBar" class="bg-blue-600 h-full w-0 transition-all duration-300 ease-out flex items-center justify-center text-[10px] text-white font-bold">0%</div>
+                    </div>
+                    <button id="printBatchBtn" disabled class="w-full flex items-center justify-center bg-gray-200 text-gray-400 font-bold py-4 px-4 rounded-xl cursor-not-allowed transition-all">
+                        <i data-lucide="x-circle" class="w-5 h-5 ml-2"></i> لا يوجد دفعة مخصصة
+                    </button>
+                </div>
+            </div>
+
+            <!-- Custom Merger (Invoices) -->
+            <div class="bg-white rounded-xl shadow-sm border overflow-hidden">
+                <div class="p-4 border-b bg-gray-50 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div class="flex items-center gap-2">
+                        <i data-lucide="files" class="w-5 h-5 text-purple-600"></i>
+                        <h2 class="font-bold text-gray-800">دمج الفواتير المجمعة</h2>
+                    </div>
+                    <div class="flex items-center gap-2 text-sm font-bold text-gray-600">
+                        <input type="checkbox" id="autoClearCheckbox" class="w-4 h-4 rounded text-purple-600 focus:ring-purple-500" checked>
+                        <label for="autoClearCheckbox">مسح تلقائي بعد الطباعة</label>
+                    </div>
+                </div>
+                <div class="p-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div id="dropzone" class="border-2 border-dashed border-gray-300 rounded-xl p-8 flex flex-col items-center justify-center text-center hover:bg-gray-50 transition-colors cursor-pointer min-h-[300px]">
+                        <input type="file" id="fileInput" multiple accept="application/pdf" class="hidden">
+                        <div class="bg-purple-100 p-4 rounded-full mb-4">
+                            <i data-lucide="upload-cloud" class="w-8 h-8 text-purple-600"></i>
+                        </div>
+                        <h3 class="text-lg font-bold text-gray-800 mb-2">اسحب وأفلت الفواتير هنا</h3>
+                        <p class="text-sm text-gray-500 mb-4">أو انقر لاختيار الملفات (PDF فقط)</p>
+                        <button class="bg-purple-600 text-white px-6 py-2 rounded-lg font-bold hover:bg-purple-700 transition shadow-sm">
+                            تصفح الملفات
+                        </button>
+                    </div>
+
+                    <div class="flex flex-col bg-gray-50 rounded-xl p-4 border">
+                        <div class="flex items-center justify-between mb-4 pb-2 border-b">
+                            <div class="flex items-center gap-4 text-sm">
+                                <span class="bg-white text-gray-700 font-bold px-3 py-1.5 rounded-full border shadow-sm">
+                                    الملفات: <span id="fileCount" class="text-purple-600">0</span>
+                                </span>
+                            </div>
+                            <div class="flex gap-2">
+                                <button id="clearAllBtn" class="px-3 py-1.5 text-xs font-bold text-red-600 bg-red-50 hover:bg-red-100 rounded-md transition-colors flex items-center">
+                                    <i data-lucide="trash" class="w-3.5 h-3.5 ml-1"></i> مسح الكل
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div id="customProgressContainer" class="hidden mb-4 bg-gray-200 rounded-full h-3 overflow-hidden relative">
+                            <div id="customProgressBar" class="bg-purple-600 h-full w-0 transition-all duration-300"></div>
+                        </div>
+
+                        <div id="fileList" class="flex-1 space-y-2 overflow-y-auto max-h-[300px] pr-1 custom-scrollbar">
+                            <div class="text-center text-gray-400 py-12 text-sm" id="emptyState">
+                                لا توجد ملفات جاهزة للطباعة
+                            </div>
+                        </div>
+
+                        <button id="printCustomBtn" disabled class="mt-4 w-full py-3 text-sm font-bold text-white bg-purple-600 hover:bg-purple-700 rounded-lg transition-colors flex items-center justify-center disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed shadow-sm">
+                            <i data-lucide="printer" class="w-4 h-4 ml-2"></i> طباعة الفواتير المجمعة
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </main>
 
     <script type="module">
         import { AuthService } from './js/auth.js';
-        import { PrintEngine } from './js/print-engine.js';
         import { ScannerEngine } from './js/scanner-engine.js';
         import { db } from './js/config.js';
         import { ref, onValue, update } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
 
         lucide.createIcons();
 
-        // 1. Auth Check
+        // 1. Auth Init
         const user = AuthService.requireRole(['PACKAGING']);
-        document.getElementById('userNameDisplay').textContent = user.name;
+        if (document.getElementById('userNameDisplay')) {
+            document.getElementById('userNameDisplay').textContent = user.name || user.username || 'مستخدم';
+        }
         document.getElementById('logoutBtn').addEventListener('click', () => AuthService.logout());
 
         // State
         const currentUser = JSON.parse(sessionStorage.getItem('kbs_user') || localStorage.getItem('kbs_user') || '{}');
         const workerUsername = (currentUser.username || '').trim().toLowerCase();
         let currentBatch = null;
-
-        // 2. Fetch Assigned Batch & Live Orders (Two-Way Sync)
-        const batchRef = ref(db, `artifacts/korean-beautys-dispatch/batches/${workerUsername}`);
-        const ordersRef = ref(db, `artifacts/korean-beautys-dispatch/orders`);
-        
         let allLiveOrders = {};
 
+        const batchRef = ref(db, `artifacts/korean-beautys-dispatch/batches/${workerUsername}`);
+        const ordersRef = ref(db, `artifacts/korean-beautys-dispatch/orders`);
+
+        // 2. UI Update Logic
         function updatePackerUI() {
             const batch = currentBatch;
             const printBtn = document.getElementById('printBatchBtn');
 
             if (batch && batch.orders && batch.orders.length > 0) {
-                // Update UI Counters dynamically
                 const total = batch.orders.length;
                 const shipped = batch.orders.filter(o => o.status === 'Shipped').length;
                 const pending = total - shipped;
@@ -239,27 +325,26 @@
                 document.getElementById('statCompleted').textContent = shipped;
                 document.getElementById('statPending').textContent = pending;
 
-                // Activate Single-Print Button
                 printBtn.disabled = batch.printed === true;
                 printBtn.className = batch.printed 
-                    ? "w-full flex items-center justify-center bg-slate-200 text-slate-400 font-bold py-3.5 px-4 rounded-xl cursor-not-allowed text-sm"
-                    : "w-full flex items-center justify-center bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 px-4 rounded-xl shadow-lg transition-all text-sm";
-                printBtn.innerHTML = batch.printed ? "✓ تم طباعة الدفعة مسبقاً" : `<i data-lucide="printer" class="w-5 h-5 ml-2"></i> طباعة البوالص (Single-Print)`;
+                    ? "w-full flex items-center justify-center bg-green-50 text-green-600 border border-green-200 font-bold py-4 px-4 rounded-xl cursor-not-allowed transition-all"
+                    : "w-full flex items-center justify-center bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 px-4 rounded-xl shadow-md transition-all";
+                printBtn.innerHTML = batch.printed ? `<i data-lucide="check-circle" class="w-5 h-5 ml-2"></i> تم طباعة الدفعة مسبقاً` : `<i data-lucide="printer" class="w-5 h-5 ml-2"></i> طباعة البوالص (${batch.waybillPdfs ? batch.waybillPdfs.length : 0} ملف)`;
             } else {
-                // Reset to 0 when no batch is assigned or batch was wiped
                 document.getElementById('statTotal').textContent = 0;
                 document.getElementById('statCompleted').textContent = 0;
                 document.getElementById('statPending').textContent = 0;
                 
                 printBtn.disabled = true;
+                printBtn.className = "w-full flex items-center justify-center bg-gray-200 text-gray-400 font-bold py-4 px-4 rounded-xl cursor-not-allowed transition-all";
                 printBtn.innerHTML = `<i data-lucide="x-circle" class="w-5 h-5 ml-2"></i> لا يوجد دفعة مخصصة`;
             }
-            lucide.createIcons();
-            }
+            if(window.lucide) window.lucide.createIcons();
+        }
 
+        // Firebase Sync
         onValue(batchRef, (snapshot) => {
             currentBatch = snapshot.val();
-            // Merge with live orders if available
             if (currentBatch && currentBatch.orders && Object.keys(allLiveOrders).length > 0) {
                 currentBatch.orders = currentBatch.orders.map(o => {
                     const liveOrder = allLiveOrders[`WAYBILL_${o.trackingNumber}`] || allLiveOrders[`WAYBILL_${o.orderId}`];
@@ -280,83 +365,11 @@
             }
         });
 
-        // 3. Print Action
-        document.getElementById('printBatchBtn').addEventListener('click', async () => {
-            if (!currentBatch || currentBatch.printed || !currentBatch.waybillPdfs) return;
-            
-            const btn = document.getElementById('printBatchBtn');
-            const progressContainer = document.getElementById('printProgressContainer');
-            const progressBar = document.getElementById('printProgressBar');
-            
-            progressContainer.classList.remove('hidden');
-            btn.disabled = true;
-            btn.innerHTML = `<i data-lucide="loader" class="w-5 h-5 ml-2 animate-spin"></i> جاري دمج وتحضير الملفات...`;
-
-            try {
-                // Initialize a new PDFDocument
-                const mergedPdf = await PDFLib.PDFDocument.create();
-                
-                const pdfs = currentBatch.waybillPdfs;
-                let processed = 0;
-
-                for (const pdfData of pdfs) {
-                    // Decode base64 and load PDF
-                    const pdfBytes = Uint8Array.from(atob(pdfData.base64), c => c.charCodeAt(0));
-                    const pdfDoc = await PDFLib.PDFDocument.load(pdfBytes);
-                    const copiedPages = await mergedPdf.copyPages(pdfDoc, pdfDoc.getPageIndices());
-                    copiedPages.forEach((page) => mergedPdf.addPage(page));
-                    
-                    processed++;
-                    progressBar.style.width = `${Math.round((processed / pdfs.length) * 100)}%`;
-                    progressBar.innerText = `${Math.round((processed / pdfs.length) * 100)}%`;
-                }
-
-                // Serialize the merged document
-                const mergedPdfBytes = await mergedPdf.save();
-                const blob = new Blob([mergedPdfBytes], { type: 'application/pdf' });
-                const blobUrl = URL.createObjectURL(blob);
-
-                // Create hidden iframe and print
-                let printFrame = document.getElementById('printFrame');
-                if (!printFrame) {
-                    printFrame = document.createElement('iframe');
-                    printFrame.id = 'printFrame';
-                    printFrame.style.display = 'none';
-                    document.body.appendChild(printFrame);
-                }
-                
-                printFrame.src = blobUrl;
-                printFrame.onload = async () => {
-                    printFrame.contentWindow.print();
-                    
-                    // Lock the batch in Firebase
-                    const now = new Date().toISOString();
-                    await update(ref(db, `artifacts/korean-beautys-dispatch/batches/${workerUsername}`), {
-                        printed: true,
-                        printedAt: now
-                    });
-                    
-                    btn.classList.replace('bg-blue-600', 'bg-green-600');
-                    btn.innerHTML = `<i data-lucide="check-circle" class="w-5 h-5 ml-2"></i> تمت الطباعة بنجاح`;
-                    lucide.createIcons();
-                };
-
-            } catch (err) {
-                console.error("PDF Merging Error: ", err);
-                alert("حدث خطأ أثناء دمج وطباعة الملفات.");
-                btn.disabled = false;
-                btn.innerHTML = `<i data-lucide="printer" class="w-5 h-5 ml-2"></i> طباعة الدفعة كاملة`;
-                lucide.createIcons();
-            }
-        });
-
-        // 4. Scanner Init
-        
+        // 3. Scanner Logic
         const handleScan = async (scannedText) => {
             const trackingNumber = String(scannedText).trim();
             if (!trackingNumber) return;
 
-            // Strict Batch Isolation Logic
             if (!currentBatch || !currentBatch.orders) {
                 ScannerEngine.triggerNotInBatch();
                 return;
@@ -367,7 +380,6 @@
             );
 
             if (orderIndex === -1) {
-                // The order doesn't belong to this worker's batch
                 ScannerEngine.triggerNotInBatch();
                 return;
             }
@@ -384,47 +396,53 @@
                 return;
             }
 
-            // Valid and pending! Mark as shipped
             try {
                 const now = new Date().toISOString();
                 const updates = {};
                 
-                // Update batch status
                 updates[`/artifacts/korean-beautys-dispatch/batches/${workerUsername}/orders/${orderIndex}/status`] = 'Shipped';
                 updates[`/artifacts/korean-beautys-dispatch/batches/${workerUsername}/orders/${orderIndex}/scanTime`] = now;
                 
-                // Update global order status
                 const orderKey = `WAYBILL_${matchedOrder.trackingNumber}`;
                 updates[`/artifacts/korean-beautys-dispatch/orders/${orderKey}/status`] = 'Shipped';
                 updates[`/artifacts/korean-beautys-dispatch/orders/${orderKey}/assignedWorker`] = workerUsername;
                 updates[`/artifacts/korean-beautys-dispatch/orders/${orderKey}/scanTime`] = now;
 
                 await update(ref(db), updates);
-                
                 ScannerEngine.triggerSuccess();
 
-                // Display physical verification UI
                 let itemsHtml = '-';
                 if (Array.isArray(matchedOrder.items) && matchedOrder.items.length > 0) {
                     itemsHtml = matchedOrder.items.map(it => `
                         <div class="flex justify-between items-center py-2 border-b last:border-0">
-                            <span class="font-medium">${it.name || '-'}</span>
-                            <span class="bg-blue-100 text-blue-800 text-xs font-bold px-2 py-1 rounded">x${it.qty || 1}</span>
+                            <span class="font-bold text-gray-700">${it.name || '-'}</span>
+                            <span class="bg-blue-100 text-blue-800 text-xs font-bold px-2 py-1 rounded">x ${it.qty || 1}</span>
                         </div>`).join('');
                 } else if (matchedOrder.products) {
                     itemsHtml = String(matchedOrder.products).replace(/\n/g, '<br>');
                 }
 
                 document.getElementById('lastScanDetails').innerHTML = `
-                    <div class="w-full text-right">
-                        <div class="bg-green-50 border border-green-200 rounded-lg p-3 mb-4 text-green-700 font-bold flex items-center gap-2">
+                    <div class="w-full text-right h-full flex flex-col">
+                        <div class="bg-green-50 border border-green-200 rounded-lg p-3 mb-4 text-green-700 font-bold flex items-center gap-2 shadow-sm">
                             <i data-lucide="check-circle" class="w-5 h-5"></i> تم تحديث الحالة بنجاح
                         </div>
-                        <p class="mb-2"><span class="text-gray-500">رقم التتبع:</span> <span class="font-bold text-lg font-mono">${matchedOrder.trackingNumber}</span></p>
-                        <p class="mb-2"><span class="text-gray-500">رقم الأوردر:</span> <span class="font-bold">#${matchedOrder.orderId}</span></p>
-                        <p class="mb-4"><span class="text-gray-500">التحصيل (COD):</span> <span class="font-bold text-red-600">${matchedOrder.cod}</span></p>
-                        <div class="bg-gray-50 border rounded-lg p-3">
-                            <div class="text-sm font-bold text-gray-500 mb-2 border-b pb-2">المنتجات (Physical Verification):</div>
+                        <div class="grid grid-cols-2 gap-4 mb-4">
+                            <div class="bg-gray-50 p-3 rounded-lg border">
+                                <span class="text-xs text-gray-500 block mb-1">رقم التتبع</span>
+                                <span class="font-bold text-lg font-mono text-gray-800 tracking-wide">${matchedOrder.trackingNumber}</span>
+                            </div>
+                            <div class="bg-gray-50 p-3 rounded-lg border">
+                                <span class="text-xs text-gray-500 block mb-1">رقم الأوردر</span>
+                                <span class="font-bold text-lg text-gray-800">#${matchedOrder.orderId}</span>
+                            </div>
+                        </div>
+                        <div class="bg-red-50 p-3 rounded-lg border border-red-100 mb-4">
+                            <span class="text-xs text-red-400 block mb-1">التحصيل (COD)</span>
+                            <span class="font-black text-xl text-red-600">${matchedOrder.cod || '0'}</span>
+                        </div>
+                        <div class="flex-1 bg-white border rounded-lg p-4 overflow-y-auto">
+                            <div class="text-sm font-bold text-gray-500 mb-3 border-b pb-2">المنتجات (Physical Verification):</div>
                             ${itemsHtml}
                         </div>
                     </div>
@@ -437,11 +455,65 @@
             }
         };
 
+        ScannerEngine.initKeyboardScanner(handleScan);
+        ScannerEngine.initCameraScanner('reader', handleScan);
 
-        
+        // 4. Print Batch Logic
+        document.getElementById('printBatchBtn').addEventListener('click', async () => {
+            if (!currentBatch || currentBatch.printed || !currentBatch.waybillPdfs) return;
+            
+            const btn = document.getElementById('printBatchBtn');
+            const progressContainer = document.getElementById('printProgressContainer');
+            const progressBar = document.getElementById('printProgressBar');
+            
+            progressContainer.classList.remove('hidden');
+            btn.disabled = true;
+            btn.innerHTML = `<i data-lucide="loader" class="w-5 h-5 ml-2 animate-spin"></i> جاري دمج وتحضير الملفات...`;
+
+            try {
+                const mergedPdf = await PDFLib.PDFDocument.create();
+                const pdfs = currentBatch.waybillPdfs;
+                let processed = 0;
+
+                for (const pdfData of pdfs) {
+                    const pdfBytes = Uint8Array.from(atob(pdfData.base64), c => c.charCodeAt(0));
+                    const pdfDoc = await PDFLib.PDFDocument.load(pdfBytes);
+                    const copiedPages = await mergedPdf.copyPages(pdfDoc, pdfDoc.getPageIndices());
+                    copiedPages.forEach((page) => mergedPdf.addPage(page));
+                    processed++;
+                    progressBar.style.width = `${Math.round((processed / pdfs.length) * 100)}%`;
+                }
+
+                const mergedPdfBytes = await mergedPdf.save();
+                const blob = new Blob([mergedPdfBytes], { type: 'application/pdf' });
+                const blobUrl = URL.createObjectURL(blob);
+
+                let printFrame = document.getElementById('printFrame');
+                if (!printFrame) {
+                    printFrame = document.createElement('iframe');
+                    printFrame.id = 'printFrame';
+                    printFrame.style.display = 'none';
+                    document.body.appendChild(printFrame);
+                }
+                
+                printFrame.src = blobUrl;
+                printFrame.onload = async () => {
+                    printFrame.contentWindow.print();
+                    await update(ref(db, `artifacts/korean-beautys-dispatch/batches/${workerUsername}`), {
+                        printed: true,
+                        printedAt: new Date().toISOString()
+                    });
+                };
+
+            } catch (err) {
+                console.error("PDF Merging Error: ", err);
+                alert("حدث خطأ أثناء دمج وطباعة الملفات.");
+                btn.disabled = false;
+                btn.innerHTML = `<i data-lucide="printer" class="w-5 h-5 ml-2"></i> طباعة البوالص (${currentBatch.waybillPdfs ? currentBatch.waybillPdfs.length : 0} ملف)`;
+            }
         });
 
-        // 6. Custom Batch Merger Logic (Tab 2)
+        // 5. Custom Invoice Merger
         const dropzone = document.getElementById('dropzone');
         const fileInput = document.getElementById('fileInput');
         const fileList = document.getElementById('fileList');
@@ -453,9 +525,6 @@
 
         const updateMetrics = () => {
             document.getElementById('fileCount').textContent = selectedFiles.length;
-            const totalBytes = selectedFiles.reduce((acc, f) => acc + f.file.size, 0);
-            document.getElementById('totalSize').textContent = (totalBytes / (1024 * 1024)).toFixed(2) + ' MB';
-            
             if(selectedFiles.length > 0) {
                 printCustomBtn.disabled = false;
                 emptyState.style.display = 'none';
@@ -474,12 +543,11 @@
                 div.innerHTML = `
                     <div class="flex items-center gap-3 overflow-hidden">
                         <i data-lucide="grip-vertical" class="text-gray-400 w-4 h-4 cursor-grab"></i>
-                        <div class="bg-red-100 p-2 rounded-lg">
-                            <i data-lucide="file-type-2" class="text-red-600 w-5 h-5"></i>
+                        <div class="bg-red-50 p-1.5 rounded-lg border border-red-100">
+                            <i data-lucide="file-text" class="text-red-500 w-4 h-4"></i>
                         </div>
                         <div class="flex flex-col truncate">
                             <span class="text-sm font-bold text-gray-800 truncate" dir="ltr">${fileObj.file.name}</span>
-                            <span class="text-xs text-gray-500">${(fileObj.file.size / 1024).toFixed(1)} KB</span>
                         </div>
                     </div>
                     <button class="remove-file text-gray-400 hover:text-red-500 transition-colors p-2" data-id="${fileObj.id}">
@@ -488,20 +556,17 @@
                 `;
                 fileList.appendChild(div);
             });
-            lucide.createIcons();
+            if(window.lucide) window.lucide.createIcons();
             updateMetrics();
 
-            if (selectedFiles.length > 0 && !sortableInstance && typeof Sortable !== 'undefined') {
-                sortableInstance = new Sortable(fileList, {
+            if (selectedFiles.length > 0 && !sortableInstance && typeof window.Sortable !== 'undefined') {
+                sortableInstance = new window.Sortable(fileList, {
                     animation: 150,
                     handle: '.cursor-grab',
                     onEnd: function (evt) {
-                        const itemEl = evt.item;
-                        const oldIndex = evt.oldIndex;
-                        const newIndex = evt.newIndex;
-                        const movedItem = selectedFiles.splice(oldIndex, 1)[0];
-                        selectedFiles.splice(newIndex, 0, movedItem);
-                    },
+                        const movedItem = selectedFiles.splice(evt.oldIndex, 1)[0];
+                        selectedFiles.splice(evt.newIndex, 0, movedItem);
+                    }
                 });
             }
         };
@@ -570,11 +635,8 @@
                     const pdfDoc = await PDFLib.PDFDocument.load(arrayBuffer);
                     const copiedPages = await mergedPdf.copyPages(pdfDoc, pdfDoc.getPageIndices());
                     copiedPages.forEach((page) => mergedPdf.addPage(page));
-                    
                     processed++;
-                    const pct = Math.round((processed / total) * 100);
-                    progressBar.style.width = `${pct}%`;
-                    progressBar.innerText = `${pct}%`;
+                    progressBar.style.width = `${Math.round((processed / total) * 100)}%`;
                 }
 
                 const mergedPdfBytes = await mergedPdf.save();
@@ -609,11 +671,6 @@
                 progressContainer.classList.add('hidden');
             }
         });
-
-        
-
-        ScannerEngine.initKeyboardScanner(handleScan);
-        ScannerEngine.initCameraScanner('reader', handleScan);
 
     </script>
 </body>
