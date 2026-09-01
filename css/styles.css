@@ -131,3 +131,8 @@ body {
   border: none;
   visibility: hidden;
 }
+
+.overlay-not-in-batch {
+  background-color: rgba(220, 38, 38, 0.95);
+  color: white;
+}
