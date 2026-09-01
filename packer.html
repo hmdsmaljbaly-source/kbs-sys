@@ -28,6 +28,78 @@
             to { opacity: 1; transform: translateY(0); }
         }
     </style>
+
+    <!-- Robust View Switcher -->
+    <script>
+        window.switchView = function(viewId, isPacker = false) {
+            try {
+                // Determine selectors based on whether it's packer or admin
+                const sectionSelector = isPacker ? '.view-section' : '.view-section';
+                const navSelector = '.nav-item';
+
+                // 1. Hide all sections & remove active class from all nav items
+                document.querySelectorAll(sectionSelector).forEach(el => {
+                    el.classList.add('hidden');
+                    el.classList.remove('active');
+                });
+                
+                document.querySelectorAll(navSelector).forEach(el => {
+                    el.classList.remove('active', 'bg-white', 'shadow-sm');
+                });
+
+                // 2. Unhide target section
+                const targetSection = document.getElementById(isPacker ? viewId : `view-${viewId}`);
+                if (targetSection) {
+                    targetSection.classList.remove('hidden');
+                    targetSection.classList.add('active');
+                } else {
+                    console.warn(`Section ${viewId} not found in DOM.`);
+                }
+
+                // 3. Highlight target nav button
+                let targetNav;
+                if (isPacker) {
+                    const navs = document.querySelectorAll(`.nav-item[data-target="${viewId}"]`);
+                    navs.forEach(n => n.classList.add('active'));
+                    if(navs.length > 0) targetNav = navs[0];
+                } else {
+                    targetNav = document.getElementById(`nav-${viewId}`);
+                    if (targetNav) targetNav.classList.add('active');
+                }
+                
+                if (!targetNav && !isPacker) {
+                    console.warn(`Nav button nav-${viewId} not found in DOM.`);
+                }
+
+                // 4. Re-render Lucide icons safely
+                if (window.lucide && typeof window.lucide.createIcons === 'function') {
+                    window.lucide.createIcons();
+                }
+            } catch (err) {
+                console.warn('Non-fatal error in switchView:', err);
+            }
+        };
+
+        // Attach global listener for packer.html data-target approach
+        document.addEventListener('DOMContentLoaded', () => {
+            document.querySelectorAll('.nav-item[data-target]').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    // Prevent bubbling if necessary
+                    const targetId = btn.getAttribute('data-target');
+                    if (targetId) window.switchView(targetId, true);
+                });
+            });
+            
+            // Ensure initial state correctly applies 'hidden'
+            document.querySelectorAll('.view-section:not(.active)').forEach(el => {
+                el.classList.add('hidden');
+            });
+            document.querySelectorAll('.view-section.active').forEach(el => {
+                el.classList.remove('hidden');
+            });
+        });
+    </script>
+
 </head>
 <body class="bg-gray-100 min-h-screen">
 
@@ -485,16 +557,7 @@
             }
         };
 
-        // 5. Navigation Tabs Logic
-        document.querySelectorAll('.nav-item').forEach(btn => {
-            btn.addEventListener('click', () => {
-                document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
-                document.querySelectorAll('.view-section').forEach(section => section.classList.remove('active'));
-                
-                const targetId = btn.getAttribute('data-target');
-                document.querySelectorAll(`.nav-item[data-target="${targetId}"]`).forEach(b => b.classList.add('active'));
-                document.getElementById(targetId).classList.add('active');
-            });
+        
         });
 
         // 6. Custom Batch Merger Logic (Tab 2)
