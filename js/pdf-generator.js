@@ -1,5 +1,5 @@
 // pdf-generator.js
-// High-Capacity PDF Engine using pdfmake
+// Native HTML-to-PDF Print Stream Engine
 
 window.downloadFilteredAuditPDF = function() {
     let rows = [];
@@ -31,98 +31,79 @@ window.downloadFilteredAuditPDF = function() {
         return;
     }
 
-    try {
-        if (typeof window.pdfMake === 'undefined') {
-            throw new Error("pdfmake is not loaded");
-        }
-
-        const body = [];
-        // Table Header
-        body.push([
-            { text: 'الحالة', style: 'tableHeader', alignment: 'center' },
-            { text: 'الوقت', style: 'tableHeader', alignment: 'center' },
-            { text: 'المسؤول', style: 'tableHeader', alignment: 'center' },
-            { text: 'الملاحظات', style: 'tableHeader', alignment: 'center' },
-            { text: 'المنتجات (Products)', style: 'tableHeader', alignment: 'left' },
-            { text: 'التحصيل COD', style: 'tableHeader', alignment: 'center' },
-            { text: 'رقم التتبع', style: 'tableHeader', alignment: 'left' },
-            { text: 'رقم الأوردر', style: 'tableHeader', alignment: 'center' },
-            { text: '#', style: 'tableHeader', alignment: 'center' }
-        ]);
-
-        rows.forEach((r, i) => {
-            const isShipped = String(r.status).includes('شحن') || r.status === 'Shipped';
-            const statusLabel = isShipped ? 'تم الشحن' : 'قيد الانتظار';
-            
-            let productsStr = '-';
-            if (Array.isArray(r.items) && r.items.length > 0) {
-                productsStr = r.items.map(it => it.name + ' x' + (it.qty || 1)).join('\n');
-            } else if (r.products) {
-                productsStr = r.products;
-            }
-
-            body.push([
-                { text: statusLabel, alignment: 'center' },
-                { text: r.scanTime ? new Date(r.scanTime).toLocaleString('en-GB') : '-', alignment: 'center' },
-                { text: r.assignedWorker || r.worker || r.scannedBy || '-', alignment: 'center' },
-                { text: r.notes || '—', alignment: 'center' },
-                { text: productsStr, alignment: 'left' },
-                { text: r.cod ? String(r.cod) : 'N/A', alignment: 'center' },
-                { text: r.trackingNumber || r.tracking || '-', alignment: 'left' },
-                { text: r.orderId || r.id || '-', alignment: 'center' },
-                { text: String(i + 1), alignment: 'center' }
-            ]);
-        });
-
-        const docDefinition = {
-            pageSize: 'A4',
-            pageOrientation: 'landscape',
-            content: [
-                { text: 'تقرير الجرد الداخلي', style: 'header', alignment: 'center' },
-                {
-                    table: {
-                        headerRows: 1,
-                        widths: [ 'auto', 'auto', 'auto', 'auto', '*', 'auto', 'auto', 'auto', 'auto' ],
-                        body: body
-                    }
-                }
-            ],
-            styles: {
-                header: { fontSize: 18, bold: true, margin: [0, 0, 0, 10] },
-                tableHeader: { bold: true, fontSize: 11, color: 'black' }
-            },
-            defaultStyle: {
-                fontSize: 9
-            }
-        };
-
-        window.pdfMake.createPdf(docDefinition).download('Report.pdf');
-
-    } catch (error) {
-        console.warn("pdfmake failed, falling back to native iframe print", error);
-        fallbackNativePrint(rows);
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+        alert("يرجى السماح بالنوافذ المنبثقة (Popups) من المتصفح لتحميل التقرير.");
+        return;
     }
-};
 
-function fallbackNativePrint(rows) {
     const htmlContent = `
         <!DOCTYPE html>
         <html lang="ar" dir="rtl">
         <head>
             <meta charset="UTF-8">
             <title>تقرير الجرد الداخلي</title>
+            <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;600;700;800&display=swap" rel="stylesheet">
             <style>
-                @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700&display=swap');
-                @page { size: A4 landscape; margin: 10mm; }
-                body { font-family: 'Tajawal', sans-serif; font-size: 11px; }
-                table { width: 100%; border-collapse: collapse; }
-                th, td { border: 1px solid #ddd; padding: 4px; text-align: right; }
-                th { background-color: #f3f4f6; }
-                .ltr { direction: ltr; text-align: left; }
+                @page { 
+                    size: A4 portrait; 
+                    margin: 8mm; 
+                }
+                body { 
+                    font-family: 'Tajawal', sans-serif; 
+                    font-size: 11px; 
+                    color: #000;
+                    margin: 0;
+                    padding: 0;
+                }
+                h2 { 
+                    text-align: center; 
+                    font-size: 18px; 
+                    margin-bottom: 15px; 
+                    border-bottom: 2px solid #000; 
+                    padding-bottom: 5px; 
+                }
+                table { 
+                    width: 100%; 
+                    border-collapse: collapse; 
+                    font-size: 10px;
+                }
+                th, td { 
+                    border: 1px solid #444; 
+                    padding: 5px; 
+                    text-align: right; 
+                }
+                th { 
+                    background-color: #f3f4f6; 
+                    font-weight: 700;
+                    -webkit-print-color-adjust: exact;
+                }
+                tr { 
+                    page-break-inside: avoid; 
+                }
+                .ltr { 
+                    direction: ltr; 
+                    text-align: left; 
+                }
+                .badge {
+                    display: inline-block;
+                    background: #eee;
+                    padding: 1px 4px;
+                    border-radius: 4px;
+                    font-size: 9px;
+                    font-weight: bold;
+                    margin-left: 4px;
+                }
+                .footer {
+                    text-align: center;
+                    font-size: 9px;
+                    margin-top: 15px;
+                    color: #555;
+                }
             </style>
         </head>
         <body>
-            <h2 style="text-align: center;">تقرير الجرد الداخلي - ${new Date().toLocaleDateString('en-GB')}</h2>
+            <h2>تقرير الجرد الداخلي - ${new Date().toLocaleDateString('en-GB')}</h2>
             <table>
                 <thead>
                     <tr>
@@ -130,7 +111,7 @@ function fallbackNativePrint(rows) {
                         <th>رقم الأوردر</th>
                         <th class="ltr">رقم التتبع</th>
                         <th class="ltr">المنتجات (Products)</th>
-                        <th>التحصيل COD</th>
+                        <th>التحصيل (COD)</th>
                         <th>الملاحظات</th>
                         <th>المسؤول</th>
                         <th>الوقت</th>
@@ -142,43 +123,63 @@ function fallbackNativePrint(rows) {
                         const isShipped = String(r.status).includes('شحن') || r.status === 'Shipped';
                         let productsStr = '-';
                         if (Array.isArray(r.items) && r.items.length > 0) {
-                            productsStr = r.items.map(it => it.name + ' x' + (it.qty || 1)).join('<br>');
+                            productsStr = r.items.map(it => '<div>' + (it.name || '-') + ' <span class="badge">x ' + (it.qty || 1) + '</span></div>').join('');
                         } else if (r.products) {
                             productsStr = String(r.products).replace(/\n/g, '<br>');
                         }
+
+                        // Safe date parsing
+                        let timeStr = '-';
+                        if (r.scanTime && r.scanTime !== '-') {
+                            const d = new Date(r.scanTime);
+                            if (!isNaN(d.getTime())) {
+                                timeStr = d.toLocaleString('en-GB', { 
+                                    day: '2-digit', month: '2-digit', year: 'numeric', 
+                                    hour: '2-digit', minute: '2-digit' 
+                                });
+                            } else {
+                                timeStr = r.scanTime; // Fallback to raw string
+                            }
+                        }
+
+                        // COD formatting
+                        let codStr = 'N/A';
+                        if (r.cod && r.cod !== 'N/A') {
+                            const num = parseFloat(String(r.cod).replace(/[^0-9.-]+/g,""));
+                            if (!isNaN(num)) {
+                                codStr = new Intl.NumberFormat('en-US').format(num) + ' ج.م';
+                            } else {
+                                codStr = String(r.cod).includes('ج') ? r.cod : r.cod + ' ج.م';
+                            }
+                        }
+
                         return '<tr>' +
-                            '<td>' + (i + 1) + '</td>' +
-                            '<td>' + (r.orderId || r.id || '-') + '</td>' +
-                            '<td class="ltr">' + (r.trackingNumber || r.tracking || '-') + '</td>' +
+                            '<td style="text-align: center;">' + (i + 1) + '</td>' +
+                            '<td style="font-weight: 700;">#' + (r.orderId || r.id || '-') + '</td>' +
+                            '<td class="ltr" style="font-family: monospace;">' + (r.trackingNumber || r.tracking || '-') + '</td>' +
                             '<td class="ltr">' + productsStr + '</td>' +
-                            '<td>' + (r.cod ? String(r.cod) : 'N/A') + '</td>' +
+                            '<td style="font-weight: bold; color: #b91c1c;">' + codStr + '</td>' +
                             '<td>' + (r.notes || '—') + '</td>' +
                             '<td>' + (r.assignedWorker || r.worker || r.scannedBy || '-') + '</td>' +
-                            '<td dir="ltr">' + (r.scanTime ? new Date(r.scanTime).toLocaleString('en-GB') : '-') + '</td>' +
-                            '<td>' + (isShipped ? 'تم الشحن' : 'قيد الانتظار') + '</td>' +
+                            '<td dir="ltr" style="font-size: 9px;">' + timeStr + '</td>' +
+                            '<td style="font-weight: bold;">' + (isShipped ? 'تم الشحن' : 'قيد الانتظار') + '</td>' +
                         '</tr>';
                     }).join('')}
                 </tbody>
             </table>
+            <div class="footer">تم إنشاء التقرير بواسطة نظام KBS</div>
             <script>
                 window.onload = function() {
                     window.print();
-                    setTimeout(() => window.parent.document.body.removeChild(window.frameElement), 500);
+                    // Close the window after printing (or if cancelled)
+                    setTimeout(() => window.close(), 500);
                 };
             </script>
         </body>
         </html>
     `;
 
-    const iframe = document.createElement('iframe');
-    iframe.style.position = 'absolute';
-    iframe.style.width = '0px';
-    iframe.style.height = '0px';
-    iframe.style.border = 'none';
-    document.body.appendChild(iframe);
-    
-    const doc = iframe.contentWindow.document;
-    doc.open();
-    doc.write(htmlContent);
-    doc.close();
-}
+    printWindow.document.open();
+    printWindow.document.write(htmlContent);
+    printWindow.document.close();
+};
