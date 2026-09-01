@@ -9,7 +9,6 @@
     <script src="https://unpkg.com/lucide@latest"></script>
     <script src="https://unpkg.com/xlsx/dist/xlsx.full.min.js"></script>
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
     <style>
@@ -317,9 +316,7 @@
                     <button id="btnExportRepExcel" class="bg-green-600 text-white px-3 py-1.5 rounded-lg text-sm hover:bg-green-700 font-bold flex items-center gap-1 shadow-sm">
                         <i data-lucide="file-spreadsheet" class="w-4 h-4"></i> إكسيل
                     </button>
-                    <button id="btnExportAuditPdf" class="bg-rose-600 text-white px-3 py-1.5 rounded-lg text-sm hover:bg-rose-700 font-bold flex items-center gap-1 shadow-sm" title="تحميل الجرد الداخلي (PDF)">
-                        <i data-lucide="file-text" class="w-4 h-4"></i> تحميل PDF
-                    </button>
+                    
                 </div>
             </div>
 
@@ -1457,133 +1454,7 @@
             }
         };
 
-        window.downloadFilteredAuditPDF = function() {
-            // 1. استخراج السجلات المفلترة حالياً (من الذاكرة أولاً ثم قراءة مباشرة من الجدول كـ Fallback)
-            let rows = [];
-
-            // currentFilteredReportsList is defined in the same script scope
-            if (typeof currentFilteredReportsList !== 'undefined' && currentFilteredReportsList.length > 0) {
-                rows = currentFilteredReportsList;
-            } else if (typeof reportsDataList !== 'undefined' && reportsDataList.length > 0) {
-                rows = reportsDataList;
-            } else {
-                // قراءة مباشرة من صفوف الجدول المعروضة حالياً على الشاشة
-                const trElements = document.querySelectorAll('#reportsTableBody tr:not(.empty-row), #ordersTableBody tr:not(.empty-row)');
-                trElements.forEach(tr => {
-                    const cells = tr.querySelectorAll('td');
-                    if (cells.length >= 6) {
-                        rows.push({
-                            orderId: cells[0]?.innerText?.replace('#', '').trim() || '',
-                            trackingNumber: cells[1]?.innerText?.trim() || '',
-                            cod: cells[2]?.innerText?.trim() || 'N/A',
-                            products: cells[3]?.innerText?.trim() || '',
-                            notes: cells[4]?.querySelector('input')?.value || cells[4]?.innerText?.trim() || '—',
-                            status: cells[5]?.innerText?.trim() || 'Pending',
-                            assignedWorker: cells[6]?.innerText?.trim() || '-',
-                            scanTime: cells[7]?.innerText?.trim() || '-'
-                        });
-                    }
-                });
-            }
-
-            if (!rows || rows.length === 0) {
-                alert("لا توجد بيانات مطابقة للفلتر لتحميلها في التقرير!");
-                return;
-            }
-
-            // 2. فتح نافذة طباعة جديدة مستقلة تماماً
-            const printWindow = window.open('', '_blank', 'width=1100,height=850');
-            if (!printWindow) {
-                alert("يرجى السماح بالنوافذ المنبثقة (Popups) من المتصفح لتحميل التقرير.");
-                return;
-            }
-
-            // 3. تجهيز بيانات الصفوف
-            const tableRowsHtml = rows.map((r, i) => {
-                const isShipped = String(r.status).includes('شحن') || r.status === 'Shipped';
-                
-                let productsHtml = '-';
-                if (Array.isArray(r.items) && r.items.length > 0) {
-                    productsHtml = r.items.map(it => `<div>${it.name || ''} <b style="color: #4f46e5;">x ${it.qty || 1}</b></div>`).join('');
-                } else if (r.products) {
-                    productsHtml = String(r.products).replace(/\n/g, '<br>');
-                }
-
-                return `
-                    <tr>
-                        <td style="text-align: center; font-weight: bold;">${i + 1}</td>
-                        <td style="font-weight: 800; text-align: center;">#${r.orderId || r.id || '-'}</td>
-                        <td style="font-family: monospace; text-align: center;">${r.trackingNumber || r.tracking || '-'}</td>
-                        <td style="text-align: left; direction: ltr; font-size: 10.5px;">${productsHtml}</td>
-                        <td style="font-weight: bold; color: #b91c1c; text-align: center;">${r.cod ? (String(r.cod).includes('ج') ? r.cod : r.cod + ' ج.م') : 'N/A'}</td>
-                        <td style="text-align: center;">${r.notes || '—'}</td>
-                        <td style="text-align: center;">${r.assignedWorker || r.worker || r.scannedBy || '-'}</td>
-                        <td style="font-weight: bold; text-align: center; color: ${isShipped ? '#15803d' : '#b45309'};">
-                            ${isShipped ? 'تم الشحن' : 'قيد الانتظار'}
-                        </td>
-                        <td style="font-family: monospace; text-align: center;">${r.scanTime || r.time || '-'}</td>
-                    </tr>
-                `;
-            }).join('');
-
-            // 4. كتابة المستند بتنسيق صفحة A4 بالطول مع منع تداخل الصفحات
-            printWindow.document.write(`
-                <!DOCTYPE html>
-                <html lang="ar" dir="rtl">
-                <head>
-                    <meta charset="UTF-8">
-                    <title>تقرير الجرد وسجل البيانات - KOREAN BEAUTYS</title>
-                    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;600;700;800&display=swap" rel="stylesheet">
-                    <style>
-                        @page { size: A4 portrait; margin: 10mm 8mm; }
-                        body { font-family: 'Tajawal', sans-serif; color: #0f172a; margin: 0; padding: 0; background: #fff; }
-                        .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #0f172a; padding-bottom: 8px; margin-bottom: 12px; }
-                        .header h1 { font-size: 16px; margin: 0; font-weight: 800; }
-                        .header p { font-size: 10px; color: #64748b; margin: 0; font-weight: 600; }
-                        table { width: 100%; border-collapse: collapse; font-size: 10px; }
-                        th, td { border: 1px solid #cbd5e1; padding: 5px 6px; }
-                        th { background-color: #f8fafc; color: #0f172a; font-weight: 800; text-align: center; }
-                        tr { page-break-inside: avoid; }
-                    </style>
-                </head>
-                <body>
-                    <div class="header">
-                        <h1>📋 تقرير سجل البيانات والجرد الشامل للأوردرات</h1>
-                        <p>تاريخ التصدير: ${new Date().toLocaleString('ar-EG')} | إجمالي السجلات: ${rows.length}</p>
-                    </div>
-                    <table>
-                        <thead>
-                            <tr>
-                                <th style="width: 25px;">#</th>
-                                <th style="width: 65px;">رقم الأوردر</th>
-                                <th style="width: 85px;">رقم التتبع</th>
-                                <th style="text-align: left;">المنتجات (Products)</th>
-                                <th style="width: 75px;">التحصيل (COD)</th>
-                                <th style="width: 65px;">الملاحظات</th>
-                                <th style="width: 60px;">المسؤول</th>
-                                <th style="width: 65px;">الحالة</th>
-                                <th style="width: 65px;">وقت الإسكان</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${tableRowsHtml}
-                        </tbody>
-                    </table>
-                    <script>
-                        window.onload = function() {
-                            setTimeout(function() {
-                                window.focus();
-                                window.print();
-                            }, 350);
-                        };
-                    <\/script>
-                </body>
-                </html>
-            `);
-            printWindow.document.close();
-        };
-
-        document.getElementById('btnExportAuditPdf').addEventListener('click', () => window.downloadFilteredAuditPDF());
+        
 
         const ALL_ARCHIVE_PATHS = [
             'artifacts/korean-beautys-dispatch/archive/orders',
