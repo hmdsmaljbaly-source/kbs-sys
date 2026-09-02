@@ -452,9 +452,25 @@
                 document.getElementById('statCompleted').textContent = 0;
                 document.getElementById('statPending').textContent = 0;
                 
-                printBtn.disabled = true;
-                printBtn.className = "w-full flex items-center justify-center bg-gray-200 text-gray-400 font-bold py-4 px-4 rounded-xl cursor-not-allowed transition-all";
-                printBtn.innerHTML = `<i data-lucide="x-circle" class="w-5 h-5 ml-2"></i> لا يوجد دفعة مخصصة`;
+                if (pendingContainer) pendingContainer.innerHTML = `
+                    <div class="col-span-full text-center text-gray-400 py-8 text-sm">
+                        لا يوجد أوردرات معلقة
+                    </div>
+                `;
+                
+                const lastScan = document.getElementById('lastScanDetails');
+                if (lastScan) {
+                    lastScan.innerHTML = `
+                        <i data-lucide="package-search" class="w-16 h-16 mb-4 opacity-30"></i>
+                        <p class="font-bold">في انتظار الإسكان...</p>
+                    `;
+                }
+                
+                if (printBtn) {
+                    printBtn.disabled = true;
+                    printBtn.className = "w-full flex items-center justify-center bg-gray-200 text-gray-400 font-bold py-4 px-4 rounded-xl cursor-not-allowed transition-all";
+                    printBtn.innerHTML = `<i data-lucide="x-circle" class="w-5 h-5 ml-2"></i> لا يوجد دفعة مخصصة`;
+                }
             }
             if(window.lucide) window.lucide.createIcons();
         }
@@ -537,7 +553,6 @@
                     itemsHtml = matchedOrder.items.map(it => `
                         <div class="flex justify-between items-center py-2 border-b last:border-0">
                             <span class="font-bold text-gray-700">${it.name || '-'}</span>
-`;
                             <span class="bg-blue-100 text-blue-800 text-xs font-bold px-2 py-1 rounded">x ${it.qty || 1}</span>
                         </div>`).join('');
                 } else if (matchedOrder.products) {
