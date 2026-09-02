@@ -785,21 +785,44 @@
         }
 
         const triggerUpload = (e) => {
-            if (e) {
-                e.preventDefault();
-                e.stopPropagation();
-            }
+            if (e && e.target === fileInput) return;
             fileInput.click();
         };
 
         if (dropZone) dropZone.addEventListener('click', triggerUpload);
-        if (browseBtn) browseBtn.addEventListener('click', triggerUpload);
-        if (fileInput) fileInput.addEventListener('change', (e) => { handleFiles(e.target.files); fileInput.value = ''; });
+        if (browseBtn) browseBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            triggerUpload();
+        });
+        
+        if (fileInput) {
+            fileInput.addEventListener('click', (e) => e.stopPropagation());
+            fileInput.addEventListener('change', (e) => { 
+                if (e.target.files && e.target.files.length > 0) {
+                    handleFiles(e.target.files); 
+                }
+                fileInput.value = ''; 
+            });
+        }
         
         if (dropZone) {
-            dropZone.addEventListener('dragover', (e) => { e.preventDefault(); e.stopPropagation(); dropZone.classList.add('drag-active'); });
-            dropZone.addEventListener('dragleave', (e) => { e.preventDefault(); e.stopPropagation(); dropZone.classList.remove('drag-active'); });
-            dropZone.addEventListener('drop', (e) => { e.preventDefault(); e.stopPropagation(); dropZone.classList.remove('drag-active'); handleFiles(e.dataTransfer.files); });
+            dropZone.addEventListener('dragover', (e) => { 
+                e.preventDefault(); 
+                dropZone.classList.add('drag-active'); 
+            });
+            dropZone.addEventListener('dragleave', (e) => { 
+                e.preventDefault(); 
+                if (!dropZone.contains(e.relatedTarget)) {
+                    dropZone.classList.remove('drag-active'); 
+                }
+            });
+            dropZone.addEventListener('drop', (e) => { 
+                e.preventDefault(); 
+                dropZone.classList.remove('drag-active'); 
+                if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                    handleFiles(e.dataTransfer.files); 
+                }
+            });
         }
 
         function formatBytes(bytes) {
