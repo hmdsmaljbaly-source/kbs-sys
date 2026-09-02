@@ -612,19 +612,24 @@
             }
         });
 
+        
         // 5. Custom Invoice Merger
-        const dropzone = document.getElementById('dropzone');
+        ['dragover', 'drop'].forEach(eventName => {
+            window.addEventListener(eventName, e => e.preventDefault(), false);
+        });
+
+        const dropZone = document.getElementById('dropzone');
         const fileInput = document.getElementById('fileInput');
         const fileList = document.getElementById('fileList');
         const printCustomBtn = document.getElementById('printCustomBtn');
         const clearAllBtn = document.getElementById('clearAllBtn');
         const emptyState = document.getElementById('emptyState');
-        let selectedFiles = [];
+        let filesArray = [];
         let sortableInstance = null;
 
-        const updateMetrics = () => {
-            document.getElementById('fileCount').textContent = selectedFiles.length;
-            if(selectedFiles.length > 0) {
+        const updateUI = () => {
+            document.getElementById('fileCount').textContent = filesArray.length;
+            if(filesArray.length > 0) {
                 printCustomBtn.disabled = false;
                 emptyState.style.display = 'none';
             } else {
@@ -635,7 +640,7 @@
 
         const renderFileList = () => {
             fileList.innerHTML = '';
-            selectedFiles.forEach(fileObj => {
+            filesArray.forEach(fileObj => {
                 const div = document.createElement('div');
                 div.className = 'flex items-center justify-between p-3 bg-white border rounded-lg shadow-sm group hover:border-purple-300 transition-colors cursor-move';
                 div.dataset.id = fileObj.id;
@@ -656,83 +661,91 @@
                 fileList.appendChild(div);
             });
             if(window.lucide) window.lucide.createIcons();
-            updateMetrics();
+            updateUI();
 
-            if (selectedFiles.length > 0 && !sortableInstance && typeof window.Sortable !== 'undefined') {
+            if (filesArray.length > 0 && !sortableInstance && typeof window.Sortable !== 'undefined') {
                 sortableInstance = new window.Sortable(fileList, {
                     animation: 150,
                     handle: '.cursor-grab',
                     onEnd: function (evt) {
-                        const movedItem = selectedFiles.splice(evt.oldIndex, 1)[0];
-                        selectedFiles.splice(evt.newIndex, 0, movedItem);
+                        const movedItem = filesArray.splice(evt.oldIndex, 1)[0];
+                        filesArray.splice(evt.newIndex, 0, movedItem);
                     }
                 });
             }
         };
 
-        const handleFiles = (files) => {
-            Array.from(files).forEach(file => {
-                if (file.type === 'application/pdf') {
-                    selectedFiles.push({
-                        id: 'file_' + Math.random().toString(36).substring(2, 9),
-                        file: file
+        function handleFiles(files) {
+            let newCount = 0;
+            for (let file of files) {
+                if (file.type === "application/pdf" || file.name.toLowerCase().endsWith('.pdf')) {
+                    filesArray.push({
+                        file: file,
+                        blobUrl: URL.createObjectURL(file),
+                        status: 'wait',
+                        id: Math.random().toString(36).substr(2, 9)
                     });
+                    newCount++;
                 }
-            });
-            renderFileList();
-        };
-
-        
-        dropzone.addEventListener('click', (e) => {
-            if (e.target !== fileInput) {
-                fileInput.click();
             }
-        });
-        
-        ['dragenter', 'dragover'].forEach(evt => {
-            dropzone.addEventListener(evt, (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                dropzone.classList.add('border-purple-500', 'bg-purple-50');
+            if (newCount > 0) {
+                renderFileList();
+            }
+        }
+
+        if (dropZone && fileInput) {
+            dropZone.addEventListener('click', () => fileInput.click());
+            fileInput.addEventListener('change', (e) => { 
+                handleFiles(e.target.files); 
+                fileInput.value = ''; 
             });
-        });
-
-        ['dragleave', 'drop'].forEach(evt => {
-            dropzone.addEventListener(evt, (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                dropzone.classList.remove('border-purple-500', 'bg-purple-50');
+            dropZone.addEventListener('dragover', (e) => { 
+                e.preventDefault(); 
+                dropZone.classList.add('border-purple-500', 'bg-purple-50'); 
             });
-        });
+            dropZone.addEventListener('dragleave', () => dropZone.classList.remove('border-purple-500', 'bg-purple-50'));
+            dropZone.addEventListener('drop', (e) => { 
+                e.preventDefault(); 
+                dropZone.classList.remove('border-purple-500', 'bg-purple-50'); 
+                handleFiles(e.dataTransfer.files); 
+            });
+        }
 
-        dropzone.addEventListener('drop', (e) => {
-            handleFiles(e.dataTransfer.files);
-        });
-
-        fileInput.addEventListener('change', (e) => handleFiles(e.target.files));
+        window.removeFile = function(id) {
+            const index = filesArray.findIndex(f => f.id === id);
+            if(index > -1) {
+                URL.revokeObjectURL(filesArray[index].blobUrl);
+                filesArray.splice(index, 1);
+                renderFileList();
+                if(filesArray.length === 0) {
+                    fileList.appendChild(emptyState);
+                }
+            }
+        };
 
         fileList.addEventListener('click', (e) => {
             const removeBtn = e.target.closest('.remove-file');
             if (removeBtn) {
-                const id = removeBtn.getAttribute('data-id');
-                selectedFiles = selectedFiles.filter(f => f.id !== id);
-                renderFileList();
+                removeFile(removeBtn.getAttribute('data-id'));
             }
         });
 
-        clearAllBtn.addEventListener('click', () => {
-            selectedFiles = [];
+        window.clearAllFiles = function() {
+            filesArray.forEach(f => URL.revokeObjectURL(f.blobUrl));
+            filesArray = [];
             renderFileList();
             fileList.appendChild(emptyState);
-        });
+        };
+
+        clearAllBtn.addEventListener('click', clearAllFiles);
 
         printCustomBtn.addEventListener('click', async () => {
-            if (selectedFiles.length === 0) return;
+            if (filesArray.length === 0) return;
             const btn = printCustomBtn;
             const originalHtml = btn.innerHTML;
             const progressContainer = document.getElementById('customProgressContainer');
             const progressBar = document.getElementById('customProgressBar');
-            
+
             btn.disabled = true;
             btn.innerHTML = `<i data-lucide="loader" class="w-4 h-4 animate-spin"></i> جاري الدمج...`;
             progressContainer.classList.remove('hidden');
@@ -740,9 +753,9 @@
             try {
                 const mergedPdf = await PDFLib.PDFDocument.create();
                 let processed = 0;
-                const total = selectedFiles.length;
+                const total = filesArray.length;
 
-                for (const fileObj of selectedFiles) {
+                for (const fileObj of filesArray) {
                     const arrayBuffer = await fileObj.file.arrayBuffer();
                     const pdfDoc = await PDFLib.PDFDocument.load(arrayBuffer);
                     const copiedPages = await mergedPdf.copyPages(pdfDoc, pdfDoc.getPageIndices());
@@ -767,7 +780,7 @@
                 printFrame.onload = () => {
                     printFrame.contentWindow.print();
                     if(document.getElementById('autoClearCheckbox').checked) {
-                        clearAllBtn.click();
+                        clearAllFiles();
                     }
                     progressContainer.classList.add('hidden');
                     progressBar.style.width = '0%';
