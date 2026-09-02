@@ -273,14 +273,15 @@
                 </div>
                 <div class="p-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
                     <input type="file" id="fileInput" multiple accept="application/pdf" class="hidden">
-                    <div id="dropzone" class="border-2 border-dashed border-gray-300 rounded-xl p-8 flex flex-col items-center justify-center text-center hover:bg-gray-50 transition-colors cursor-pointer min-h-[300px]">
-                        
-                        <div class="bg-purple-100 p-4 rounded-full mb-4">
-                            <i data-lucide="upload-cloud" class="w-8 h-8 text-purple-600"></i>
+                    <div id="dropzone" class="border-2 border-dashed border-gray-300 rounded-xl p-8 flex flex-col items-center justify-center text-center hover:bg-gray-50 transition-colors cursor-pointer min-h-[300px] relative">
+                        <div class="pointer-events-none flex flex-col items-center">
+                            <div class="bg-purple-100 p-4 rounded-full mb-4">
+                                <i data-lucide="upload-cloud" class="w-8 h-8 text-purple-600"></i>
+                            </div>
+                            <h3 class="text-lg font-bold text-gray-800 mb-2">اسحب وأفلت الفواتير هنا</h3>
+                            <p class="text-sm text-gray-500 mb-4">أو انقر لاختيار الملفات (PDF فقط)</p>
                         </div>
-                        <h3 class="text-lg font-bold text-gray-800 mb-2">اسحب وأفلت الفواتير هنا</h3>
-                        <p class="text-sm text-gray-500 mb-4">أو انقر لاختيار الملفات (PDF فقط)</p>
-                        <button class="bg-purple-600 text-white px-6 py-2 rounded-lg font-bold hover:bg-purple-700 transition shadow-sm">
+                        <button id="browseFilesBtn" type="button" class="bg-purple-600 text-white px-6 py-2 rounded-lg font-bold hover:bg-purple-700 transition shadow-sm relative z-10">
                             تصفح الملفات
                         </button>
                     </div>
@@ -614,8 +615,11 @@
 
         
         // 5. Custom Invoice Merger
-        ['dragover', 'drop'].forEach(eventName => {
-            window.addEventListener(eventName, e => e.preventDefault(), false);
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            window.addEventListener(eventName, e => {
+                e.preventDefault();
+                e.stopPropagation();
+            }, false);
         });
 
         const dropZone = document.getElementById('dropzone');
@@ -693,21 +697,45 @@
             }
         }
 
+        const browseBtn = document.getElementById('browseFilesBtn');
         if (dropZone && fileInput) {
-            dropZone.addEventListener('click', () => fileInput.click());
+            const triggerUpload = (e) => {
+                if (e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                }
+                fileInput.click();
+            };
+            
+            dropZone.addEventListener('click', triggerUpload);
+            if (browseBtn) browseBtn.addEventListener('click', triggerUpload);
+
             fileInput.addEventListener('change', (e) => { 
-                handleFiles(e.target.files); 
+                if (e.target.files && e.target.files.length > 0) {
+                    handleFiles(e.target.files); 
+                }
                 fileInput.value = ''; 
             });
+
             dropZone.addEventListener('dragover', (e) => { 
-                e.preventDefault(); 
+                e.preventDefault();
+                e.stopPropagation();
                 dropZone.classList.add('border-purple-500', 'bg-purple-50'); 
             });
-            dropZone.addEventListener('dragleave', () => dropZone.classList.remove('border-purple-500', 'bg-purple-50'));
+
+            dropZone.addEventListener('dragleave', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                dropZone.classList.remove('border-purple-500', 'bg-purple-50');
+            });
+
             dropZone.addEventListener('drop', (e) => { 
-                e.preventDefault(); 
+                e.preventDefault();
+                e.stopPropagation();
                 dropZone.classList.remove('border-purple-500', 'bg-purple-50'); 
-                handleFiles(e.dataTransfer.files); 
+                if (e.dataTransfer && e.dataTransfer.files) {
+                    handleFiles(e.dataTransfer.files); 
+                }
             });
         }
 
