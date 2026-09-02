@@ -10,18 +10,27 @@
         <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
     <style>
+        body { font-family: 'Tajawal', sans-serif; background-color: #f3f4f6; }
         .nav-item.active {
-            background-color: #ebf5ff; /* blue-50 */
-            color: #2563eb; /* blue-600 */
-            border-bottom: 3px solid #2563eb;
+            color: #2563eb;
+            border-bottom: 2px solid #2563eb;
+            background-color: #eff6ff;
         }
         .view-section {
             display: none;
-            animation: fadeIn 0.3s ease-in-out;
         }
         .view-section.active {
             display: block;
         }
+        
+        .glass-panel { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.2); }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 10px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #c7c7cc; border-radius: 10px; }
+        .drag-active { border-color: #4f46e5 !important; background-color: #eef2ff !important; transform: scale(1.02); }
+        @keyframes slideUp { from { transform: translate(-50%, 100%); opacity: 0; } to { transform: translate(-50%, 0); opacity: 1; } }
+        .toast-animate { animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+        
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(5px); }
             to { opacity: 1; transform: translateY(0); }
@@ -218,9 +227,7 @@
                     </div>
                 </div>
             </div>
-        
-            </div>
-            
+
             <!-- NEW: Pending Orders Live List -->
             <div class="mt-6 bg-white rounded-xl shadow-sm border overflow-hidden">
                 <div class="p-4 border-b bg-gray-50 flex flex-col md:flex-row md:items-center justify-between gap-3">
@@ -239,6 +246,8 @@
                     </div>
                 </div>
             </div>
+            
+        </div>
             
         <!-- Tab 2: Print Hub -->
         <div id="view-printer" class="view-section hidden">
@@ -260,65 +269,140 @@
             </div>
 
             <!-- Custom Merger (Invoices) -->
-            <div class="bg-white rounded-xl shadow-sm border overflow-hidden">
-                <div class="p-4 border-b bg-gray-50 flex flex-col md:flex-row md:items-center justify-between gap-4">
-                    <div class="flex items-center gap-2">
-                        <i data-lucide="files" class="w-5 h-5 text-purple-600"></i>
-                        <h2 class="font-bold text-gray-800">دمج الفواتير المجمعة</h2>
+            <div class="mt-8 space-y-6">
+                <div class="flex items-center gap-2 mb-4">
+                    <i data-lucide="files" class="w-6 h-6 text-purple-600"></i>
+                    <h2 class="font-bold text-gray-800 text-xl">نظام طباعة الفواتير المجمعة</h2>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div class="glass-panel rounded-xl p-4 flex items-center shadow-sm">
+                        <div class="p-3 rounded-full bg-blue-100 text-blue-600 ml-4">
+                            <i data-lucide="file-check-2" class="w-6 h-6"></i>
+                        </div>
+                        <div>
+                            <p class="text-sm text-gray-500 font-semibold">إجمالي الملفات</p>
+                            <p class="text-2xl font-bold text-gray-800" id="statFiles">0</p>
+                        </div>
                     </div>
-                    <div class="flex items-center gap-2 text-sm font-bold text-gray-600">
-                        <input type="checkbox" id="autoClearCheckbox" class="w-4 h-4 rounded text-purple-600 focus:ring-purple-500" checked>
-                        <label for="autoClearCheckbox">مسح تلقائي بعد الطباعة</label>
+                    <div class="glass-panel rounded-xl p-4 flex items-center shadow-sm">
+                        <div class="p-3 rounded-full bg-green-100 text-green-600 ml-4">
+                            <i data-lucide="hard-drive" class="w-6 h-6"></i>
+                        </div>
+                        <div>
+                            <p class="text-sm text-gray-500 font-semibold">الحجم الإجمالي</p>
+                            <p class="text-2xl font-bold text-gray-800" id="statSize">0 MB</p>
+                        </div>
+                    </div>
+                    <div class="glass-panel rounded-xl p-4 flex items-center shadow-sm">
+                        <div class="p-3 rounded-full bg-purple-100 text-purple-600 ml-4">
+                            <i data-lucide="activity" class="w-6 h-6"></i>
+                        </div>
+                        <div>
+                            <p class="text-sm text-gray-500 font-semibold">الحالة</p>
+                            <p class="text-lg font-bold text-purple-600" id="statStatus">في انتظار الملفات</p>
+                        </div>
                     </div>
                 </div>
-                <div class="p-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    <input type="file" id="fileInput" multiple accept="application/pdf" class="hidden">
-                    <div id="dropzone" class="border-2 border-dashed border-gray-300 rounded-xl p-8 flex flex-col items-center justify-center text-center hover:bg-gray-50 transition-colors cursor-pointer min-h-[300px] relative">
-                        <div class="pointer-events-none flex flex-col items-center">
-                            <div class="bg-purple-100 p-4 rounded-full mb-4">
-                                <i data-lucide="upload-cloud" class="w-8 h-8 text-purple-600"></i>
+
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <!-- العمود الأيمن -->
+                    <div class="lg:col-span-1 space-y-6">
+                        <!-- Dropzone -->
+                        <div id="dropZone" class="glass-panel border-2 border-dashed border-indigo-300 rounded-2xl p-8 text-center cursor-pointer transition-all duration-300 hover:border-blue-500 hover:bg-indigo-50 flex flex-col items-center justify-center min-h-[250px] relative">
+                            <div class="pointer-events-none flex flex-col items-center">
+                                <div class="bg-indigo-100 text-blue-600 p-4 rounded-full mb-4">
+                                    <i data-lucide="upload-cloud" class="w-8 h-8"></i>
+                                </div>
+                                <h3 class="text-lg font-bold text-gray-800 mb-1">اسحب وأفلت الفواتير هنا</h3>
+                                <p class="text-sm text-gray-500 mb-4">أو اضغط لتصفح جهازك (يدعم PDF فقط)</p>
                             </div>
-                            <h3 class="text-lg font-bold text-gray-800 mb-2">اسحب وأفلت الفواتير هنا</h3>
-                            <p class="text-sm text-gray-500 mb-4">أو انقر لاختيار الملفات (PDF فقط)</p>
+                            <button id="browseFilesBtn" type="button" class="px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors relative z-10">اختيار الملفات</button>
+                            <input type="file" id="fileInput" multiple accept="application/pdf" class="hidden">
                         </div>
-                        <button id="browseFilesBtn" type="button" class="bg-purple-600 text-white px-6 py-2 rounded-lg font-bold hover:bg-purple-700 transition shadow-sm relative z-10">
-                            تصفح الملفات
-                        </button>
+
+                        <!-- Settings -->
+                        <div class="glass-panel rounded-2xl p-6 shadow-sm">
+                            <h3 class="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
+                                <i data-lucide="settings" class="w-5 h-5 text-gray-500"></i>
+                                إعدادات الطباعة
+                            </h3>
+                            <div class="space-y-4">
+                                <label class="flex items-start gap-3 cursor-pointer group">
+                                    <div class="relative flex items-center justify-center mt-1">
+                                        <input type="checkbox" id="settingAutoClear" class="peer sr-only" checked>
+                                        <div class="w-5 h-5 border-2 border-gray-300 rounded bg-white peer-checked:bg-blue-600 peer-checked:border-blue-600 transition-colors"></div>
+                                        <i data-lucide="check" class="w-3.5 h-3.5 text-white absolute opacity-0 peer-checked:opacity-100 transition-opacity"></i>
+                                    </div>
+                                    <div>
+                                        <p class="text-sm font-bold text-gray-800 group-hover:text-blue-600 transition-colors">تنظيف تلقائي</p>
+                                        <p class="text-xs text-gray-500 mt-1">حذف الفواتير من القائمة تلقائياً بعد إرسال أمر الطباعة.</p>
+                                    </div>
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Print Action -->
+                        <div class="glass-panel rounded-2xl p-6 shadow-sm border border-indigo-100 bg-indigo-50/30">
+                            <div id="progressContainer" class="hidden mb-4">
+                                <div class="flex justify-between text-xs font-semibold mb-1 text-gray-600">
+                                    <span id="progressText">جاري التجهيز...</span>
+                                    <span id="progressPercent">0%</span>
+                                </div>
+                                <div class="w-full bg-gray-200 rounded-full h-2.5 overflow-hidden">
+                                    <div id="progressBar" class="bg-blue-600 h-2.5 rounded-full transition-all duration-300" style="width: 0%"></div>
+                                </div>
+                            </div>
+                            <button id="printAllBtn" disabled class="w-full bg-gray-300 text-gray-500 cursor-not-allowed font-bold py-4 px-4 rounded-xl shadow-sm transition-all duration-300 flex justify-center items-center gap-2 text-lg">
+                                <i data-lucide="printer" class="w-6 h-6"></i>
+                                اختر فواتير للطباعة
+                            </button>
+                        </div>
                     </div>
 
-                    <div class="flex flex-col bg-gray-50 rounded-xl p-4 border">
-                        <div class="flex items-center justify-between mb-4 pb-2 border-b">
-                            <div class="flex items-center gap-4 text-sm">
-                                <span class="bg-white text-gray-700 font-bold px-3 py-1.5 rounded-full border shadow-sm">
-                                    الملفات: <span id="fileCount" class="text-purple-600">0</span>
-                                </span>
+                    <!-- العمود الأيسر -->
+                    <div class="lg:col-span-2 flex flex-col h-full">
+                        <div class="glass-panel rounded-2xl flex-1 flex flex-col shadow-sm overflow-hidden min-h-[500px]">
+                            <!-- Search Bar -->
+                            <div class="p-4 border-b border-gray-200 bg-white">
+                                <div class="relative">
+                                    <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                                        <i data-lucide="search" class="w-5 h-5 text-gray-400"></i>
+                                    </div>
+                                    <input type="text" id="searchInput" class="block w-full pl-3 pr-10 py-3 border border-gray-300 rounded-xl leading-5 bg-gray-50 placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 sm:text-sm shadow-inner" placeholder="ابحث برقم الأوردر أو اسم الملف...">
+                                </div>
                             </div>
-                            <div class="flex gap-2">
-                                <button id="clearAllBtn" class="px-3 py-1.5 text-xs font-bold text-red-600 bg-red-50 hover:bg-red-100 rounded-md transition-colors flex items-center">
-                                    <i data-lucide="trash" class="w-3.5 h-3.5 ml-1"></i> مسح الكل
+
+                            <!-- Header List & Clear Button -->
+                            <div class="p-4 border-b border-gray-100 bg-gray-50/50 flex justify-between items-center">
+                                <h3 class="font-bold text-gray-800">قائمة الفواتير الجاهزة</h3>
+                                <button id="clearBtnList" class="text-sm text-red-500 hover:text-red-700 font-semibold flex items-center gap-1 transition-colors px-2 py-1 rounded hover:bg-red-50 hidden">
+                                    <i data-lucide="trash-2" class="w-4 h-4"></i>
+                                    مسح القائمة
                                 </button>
                             </div>
-                        </div>
-                        
-                        <div id="customProgressContainer" class="hidden mb-4 bg-gray-200 rounded-full h-3 overflow-hidden relative">
-                            <div id="customProgressBar" class="bg-purple-600 h-full w-0 transition-all duration-300"></div>
-                        </div>
 
-                        <div id="fileList" class="flex-1 space-y-2 overflow-y-auto max-h-[300px] pr-1 custom-scrollbar">
-                            <div class="text-center text-gray-400 py-12 text-sm" id="emptyState">
-                                لا توجد ملفات جاهزة للطباعة
+                            <div class="flex-1 overflow-y-auto custom-scrollbar p-2" id="fileListContainer">
+                                <div id="emptyState" class="h-full flex flex-col items-center justify-center text-gray-400 p-8 text-center">
+                                    <i data-lucide="files" class="w-16 h-16 mb-4 opacity-50"></i>
+                                    <p class="text-lg font-medium text-gray-500">القائمة فارغة</p>
+                                    <p class="text-sm mt-1">قم بإضافة الفواتير من المربع الجانبي للبدء</p>
+                                </div>
+                                <ul id="fileList" class="space-y-2 hidden pb-4"></ul>
                             </div>
                         </div>
-
-                        <button id="printCustomBtn" disabled class="mt-4 w-full py-3 text-sm font-bold text-white bg-purple-600 hover:bg-purple-700 rounded-lg transition-colors flex items-center justify-center disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed shadow-sm">
-                            <i data-lucide="printer" class="w-4 h-4 ml-2"></i> طباعة الفواتير المجمعة
-                        </button>
                     </div>
                 </div>
             </div>
         </div>
 
     </main>
+
+    <!-- رسائل منبثقة -->
+    <div id="toast" class="fixed bottom-5 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white px-6 py-3 rounded-xl shadow-2xl flex items-center gap-3 z-50 hidden">
+        <i data-lucide="check-circle" class="w-5 h-5 text-green-400"></i>
+        <span id="toastMsg" class="font-medium text-sm">رسالة النظام</span>
+    </div>
 
     <script type="module">
         import { AuthService } from './js/auth.js';
@@ -665,62 +749,65 @@
             }, false);
         });
 
-        const dropZone = document.getElementById('dropzone');
+        const dropZone = document.getElementById('dropZone');
         const fileInput = document.getElementById('fileInput');
         const fileList = document.getElementById('fileList');
-        const printCustomBtn = document.getElementById('printCustomBtn');
-        const clearAllBtn = document.getElementById('clearAllBtn');
         const emptyState = document.getElementById('emptyState');
+        const clearBtnList = document.getElementById('clearBtnList');
+        const printAllBtn = document.getElementById('printAllBtn');
+        const searchInput = document.getElementById('searchInput');
+        const browseBtn = document.getElementById('browseFilesBtn');
+        
+        const statFiles = document.getElementById('statFiles');
+        const statSize = document.getElementById('statSize');
+        const statStatus = document.getElementById('statStatus');
+
         let filesArray = [];
-        let sortableInstance = null;
+        let sortableInstance = null; 
 
-        const updateUI = () => {
-            document.getElementById('fileCount').textContent = filesArray.length;
-            if(filesArray.length > 0) {
-                printCustomBtn.disabled = false;
-                emptyState.style.display = 'none';
-            } else {
-                printCustomBtn.disabled = true;
-                emptyState.style.display = 'block';
-            }
-        };
+        // --- البحث السريع ---
+        if (searchInput) {
+            searchInput.addEventListener('input', function(e) {
+                const searchTerm = e.target.value.toLowerCase();
+                const listItems = fileList.querySelectorAll('li');
+                
+                if(searchTerm.trim() !== '') {
+                    if(sortableInstance) sortableInstance.option("disabled", true);
+                } else {
+                    if(sortableInstance) sortableInstance.option("disabled", false);
+                }
 
-        const renderFileList = () => {
-            fileList.innerHTML = '';
-            filesArray.forEach(fileObj => {
-                const div = document.createElement('div');
-                div.className = 'flex items-center justify-between p-3 bg-white border rounded-lg shadow-sm group hover:border-purple-300 transition-colors cursor-move';
-                div.dataset.id = fileObj.id;
-                div.innerHTML = `
-                    <div class="flex items-center gap-3 overflow-hidden">
-                        <i data-lucide="grip-vertical" class="text-gray-400 w-4 h-4 cursor-grab"></i>
-                        <div class="bg-red-50 p-1.5 rounded-lg border border-red-100">
-                            <i data-lucide="file-text" class="text-red-500 w-4 h-4"></i>
-                        </div>
-                        <div class="flex flex-col truncate">
-                            <span class="text-sm font-bold text-gray-800 truncate" dir="ltr">${fileObj.file.name}</span>
-                        </div>
-                    </div>
-                    <button class="remove-file text-gray-400 hover:text-red-500 transition-colors p-2" data-id="${fileObj.id}">
-                        <i data-lucide="x" class="w-4 h-4"></i>
-                    </button>
-                `;
-                fileList.appendChild(div);
-            });
-            if(window.lucide) window.lucide.createIcons();
-            updateUI();
-
-            if (filesArray.length > 0 && !sortableInstance && typeof window.Sortable !== 'undefined') {
-                sortableInstance = new window.Sortable(fileList, {
-                    animation: 150,
-                    handle: '.cursor-grab',
-                    onEnd: function (evt) {
-                        const movedItem = filesArray.splice(evt.oldIndex, 1)[0];
-                        filesArray.splice(evt.newIndex, 0, movedItem);
-                    }
+                listItems.forEach(item => {
+                    const fileName = item.getAttribute('data-filename').toLowerCase();
+                    item.style.display = fileName.includes(searchTerm) ? 'flex' : 'none';
                 });
+            });
+        }
+
+        const triggerUpload = (e) => {
+            if (e) {
+                e.preventDefault();
+                e.stopPropagation();
             }
+            fileInput.click();
         };
+
+        if (dropZone) dropZone.addEventListener('click', triggerUpload);
+        if (browseBtn) browseBtn.addEventListener('click', triggerUpload);
+        if (fileInput) fileInput.addEventListener('change', (e) => { handleFiles(e.target.files); fileInput.value = ''; });
+        
+        if (dropZone) {
+            dropZone.addEventListener('dragover', (e) => { e.preventDefault(); e.stopPropagation(); dropZone.classList.add('drag-active'); });
+            dropZone.addEventListener('dragleave', (e) => { e.preventDefault(); e.stopPropagation(); dropZone.classList.remove('drag-active'); });
+            dropZone.addEventListener('drop', (e) => { e.preventDefault(); e.stopPropagation(); dropZone.classList.remove('drag-active'); handleFiles(e.dataTransfer.files); });
+        }
+
+        function formatBytes(bytes) {
+            if (bytes === 0) return '0 B';
+            const k = 1024, dm = 2, sizes = ['B', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+        }
 
         function handleFiles(files) {
             let newCount = 0;
@@ -736,104 +823,184 @@
                 }
             }
             if (newCount > 0) {
-                renderFileList();
+                showToast(`تم إضافة ${newCount} فاتورة بنجاح`);
+                updateUI();
+                if (searchInput) {
+                    searchInput.value = '';
+                    searchInput.dispatchEvent(new Event('input'));
+                }
+            } else if (files.length > 0) {
+                showToast("يرجى اختيار ملفات PDF فقط!", true);
             }
         }
-
-        const browseBtn = document.getElementById('browseFilesBtn');
-        if (dropZone && fileInput) {
-            const triggerUpload = (e) => {
-                if (e) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                }
-                fileInput.click();
-            };
-            
-            dropZone.addEventListener('click', triggerUpload);
-            if (browseBtn) browseBtn.addEventListener('click', triggerUpload);
-
-            fileInput.addEventListener('change', (e) => { 
-                if (e.target.files && e.target.files.length > 0) {
-                    handleFiles(e.target.files); 
-                }
-                fileInput.value = ''; 
-            });
-
-            dropZone.addEventListener('dragover', (e) => { 
-                e.preventDefault();
-                e.stopPropagation();
-                dropZone.classList.add('border-purple-500', 'bg-purple-50'); 
-            });
-
-            dropZone.addEventListener('dragleave', (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                dropZone.classList.remove('border-purple-500', 'bg-purple-50');
-            });
-
-            dropZone.addEventListener('drop', (e) => { 
-                e.preventDefault();
-                e.stopPropagation();
-                dropZone.classList.remove('border-purple-500', 'bg-purple-50'); 
-                if (e.dataTransfer && e.dataTransfer.files) {
-                    handleFiles(e.dataTransfer.files); 
-                }
-            });
-        }
-
+        
         window.removeFile = function(id) {
             const index = filesArray.findIndex(f => f.id === id);
             if(index > -1) {
                 URL.revokeObjectURL(filesArray[index].blobUrl);
                 filesArray.splice(index, 1);
-                renderFileList();
-                if(filesArray.length === 0) {
-                    fileList.appendChild(emptyState);
-                }
+                updateUI();
+                if (searchInput) searchInput.dispatchEvent(new Event('input'));
             }
-        };
+        }
 
-        fileList.addEventListener('click', (e) => {
-            const removeBtn = e.target.closest('.remove-file');
-            if (removeBtn) {
-                removeFile(removeBtn.getAttribute('data-id'));
-            }
-        });
+        window.previewFile = function(id) {
+            const file = filesArray.find(f => f.id === id);
+            if(file) window.open(file.blobUrl, '_blank');
+        }
 
         window.clearAllFiles = function() {
             filesArray.forEach(f => URL.revokeObjectURL(f.blobUrl));
             filesArray = [];
-            renderFileList();
-            fileList.appendChild(emptyState);
-        };
+            showToast("تم تفريغ القائمة");
+            updateUI();
+            if (searchInput) searchInput.value = '';
+        }
+        
+        if (clearBtnList) clearBtnList.addEventListener('click', window.clearAllFiles);
 
-        clearAllBtn.addEventListener('click', clearAllFiles);
+        function updateUI() {
+            if(statFiles) statFiles.textContent = filesArray.length;
+            const totalBytes = filesArray.reduce((acc, curr) => acc + curr.file.size, 0);
+            if(statSize) statSize.textContent = formatBytes(totalBytes);
+            
+            if (filesArray.length > 0) {
+                if(statStatus) {
+                    statStatus.textContent = "جاهز للطباعة";
+                    statStatus.className = "text-lg font-bold text-green-600";
+                }
+                
+                emptyState.classList.add('hidden');
+                fileList.classList.remove('hidden');
+                clearBtnList.classList.remove('hidden');
+                
+                printAllBtn.disabled = false;
+                printAllBtn.className = "w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-xl shadow-lg transition-all flex justify-center items-center gap-2";
+                printAllBtn.innerHTML = `<i data-lucide="printer" class="w-5 h-5"></i> طباعة الفواتير المجمعة`;
+            } else {
+                if(statStatus) {
+                    statStatus.textContent = "في انتظار الفواتير";
+                    statStatus.className = "text-lg font-bold text-purple-600";
+                }
+                
+                emptyState.classList.remove('hidden');
+                fileList.classList.add('hidden');
+                clearBtnList.classList.add('hidden');
+                
+                printAllBtn.disabled = true;
+                printAllBtn.className = "w-full bg-gray-300 text-gray-500 cursor-not-allowed font-bold py-3 px-4 rounded-xl shadow-sm transition-all flex justify-center items-center gap-2";
+                printAllBtn.innerHTML = `<i data-lucide="printer" class="w-5 h-5"></i> اختر فواتير للطباعة`;
+            }
 
-        printCustomBtn.addEventListener('click', async () => {
-            if (filesArray.length === 0) return;
-            const btn = printCustomBtn;
-            const originalHtml = btn.innerHTML;
-            const progressContainer = document.getElementById('customProgressContainer');
-            const progressBar = document.getElementById('customProgressBar');
+            fileList.innerHTML = '';
+            filesArray.forEach((item, index) => {
+                let li = document.createElement('li');
+                li.setAttribute('data-filename', item.file.name);
+                li.setAttribute('data-id', item.id);
+                
+                let statusBadge = `<span class="bg-gray-100 text-gray-600 text-xs px-2 py-1 rounded font-semibold whitespace-nowrap">في الانتظار</span>`;
+                if(item.status === 'processing') statusBadge = `<span class="bg-yellow-100 text-yellow-700 text-xs px-2 py-1 rounded font-semibold whitespace-nowrap animate-pulse">جاري...</span>`;
+                if(item.status === 'done') statusBadge = `<span class="bg-green-100 text-green-700 text-xs px-2 py-1 rounded font-semibold whitespace-nowrap">مكتمل ✔</span>`;
 
-            btn.disabled = true;
-            btn.innerHTML = `<i data-lucide="loader" class="w-4 h-4 animate-spin"></i> جاري الدمج...`;
-            progressContainer.classList.remove('hidden');
+                li.className = 'bg-white border border-gray-100 hover:border-blue-200 rounded-xl p-3 flex justify-between items-center shadow-sm';
+                li.innerHTML = `
+                    <div class="flex items-center gap-3 w-full overflow-hidden">
+                        <div class="drag-handle cursor-grab active:cursor-grabbing text-gray-400 hover:text-gray-600 p-1">
+                            <i data-lucide="grip-vertical" class="w-5 h-5"></i>
+                        </div>
+                        <div class="bg-blue-50 text-blue-600 font-bold w-8 h-8 rounded-lg flex items-center justify-center shrink-0">${index + 1}</div>
+                        <div class="overflow-hidden">
+                            <div class="font-semibold text-gray-800 text-sm truncate max-w-[200px]" title="${item.file.name}">${item.file.name}</div>
+                            <div class="text-xs text-gray-500 flex items-center gap-2 mt-0.5">
+                                <span>${formatBytes(item.file.size)}</span>
+                                <span class="w-1 h-1 bg-gray-300 rounded-full"></span>
+                                ${statusBadge}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-1.5 shrink-0">
+                        <button onclick="previewFile('${item.id}')" class="p-1.5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded" title="معاينة">
+                            <i data-lucide="eye" class="w-4 h-4"></i>
+                        </button>
+                        <button onclick="removeFile('${item.id}')" class="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded" title="حذف">
+                            <i data-lucide="trash-2" class="w-4 h-4"></i>
+                        </button>
+                    </div>
+                `;
+                fileList.appendChild(li);
+            });
+
+            if(window.lucide) window.lucide.createIcons();
+
+            if(!sortableInstance && typeof window.Sortable !== 'undefined') {
+                sortableInstance = new Sortable(document.getElementById('fileList'), {
+                    animation: 150, handle: '.drag-handle', ghostClass: 'opacity-50',
+                    onEnd: function (evt) {
+                        const itemEl = filesArray.splice(evt.oldIndex, 1)[0];
+                        filesArray.splice(evt.newIndex, 0, itemEl);
+                        updateUI(); 
+                    }
+                });
+            }
+        }
+
+        function showToast(message, isError = false) {
+            const toast = document.getElementById("toast");
+            const toastMsg = document.getElementById("toastMsg");
+            const icon = toast.querySelector('i');
+            
+            toastMsg.textContent = message;
+            
+            if (isError) {
+                icon.setAttribute('data-lucide', 'x-circle');
+                icon.classList.remove('text-green-400');
+                icon.classList.add('text-red-400');
+            } else {
+                icon.setAttribute('data-lucide', 'check-circle');
+                icon.classList.remove('text-red-400');
+                icon.classList.add('text-green-400');
+            }
+            if(window.lucide) window.lucide.createIcons();
+
+            toast.classList.remove('hidden');
+            toast.classList.add('toast-animate');
+            setTimeout(() => { toast.classList.add('hidden'); toast.classList.remove('toast-animate'); }, 4000);
+        }
+
+        if (printAllBtn) printAllBtn.addEventListener('click', async () => {
+            if(filesArray.length === 0) return;
+
+            printAllBtn.disabled = true;
+            printAllBtn.innerHTML = `<i data-lucide="loader" class="w-5 h-5 animate-spin"></i> جاري المعالجة...`;
+            if(window.lucide) window.lucide.createIcons();
+            
+            const progressContainer = document.getElementById('progressContainer');
+            const progressBar = document.getElementById('progressBar');
+            const progressPercent = document.getElementById('progressPercent');
+            if(progressContainer) progressContainer.classList.remove('hidden');
 
             try {
                 const mergedPdf = await PDFLib.PDFDocument.create();
-                let processed = 0;
-                const total = filesArray.length;
 
-                for (const fileObj of filesArray) {
-                    const arrayBuffer = await fileObj.file.arrayBuffer();
-                    const pdfDoc = await PDFLib.PDFDocument.load(arrayBuffer);
-                    const copiedPages = await mergedPdf.copyPages(pdfDoc, pdfDoc.getPageIndices());
+                // دمج جميع الفواتير
+                for (let i = 0; i < filesArray.length; i++) {
+                    filesArray[i].status = 'processing';
+                    updateUI(); 
+                    await new Promise(resolve => setTimeout(resolve, 10));
+                    
+                    let percent = Math.round((i / filesArray.length) * 90);
+                    if(progressBar) progressBar.style.width = `${percent}%`;
+                    if(progressPercent) progressPercent.textContent = `${percent}%`;
+
+                    const fileArrayBuffer = await filesArray[i].file.arrayBuffer();
+                    const pdf = await PDFLib.PDFDocument.load(fileArrayBuffer);
+                    const copiedPages = await mergedPdf.copyPages(pdf, pdf.getPageIndices());
+                    
                     copiedPages.forEach((page) => mergedPdf.addPage(page));
-                    processed++;
-                    progressBar.style.width = `${Math.round((processed / total) * 100)}%`;
+                    filesArray[i].status = 'done';
                 }
+
+                updateUI();
 
                 // ==========================================
                 // 🛑 المكان المخصص للصق كود الـ Base64 الخاص بالزعامة
@@ -852,32 +1019,37 @@
                     console.error("خطأ في قراءة ورقة الزعامة المخفية", e);
                 }
 
-                const mergedPdfBytes = await mergedPdf.save();
-                const blob = new Blob([mergedPdfBytes], { type: 'application/pdf' });
-                const blobUrl = URL.createObjectURL(blob);
+                if(progressBar) progressBar.style.width = `95%`;
+                if(progressPercent) progressPercent.textContent = `95%`;
+                await new Promise(resolve => setTimeout(resolve, 10));
 
-                let printFrame = document.getElementById('customPrintFrame');
-                if (!printFrame) {
-                    printFrame = document.createElement('iframe');
-                    printFrame.id = 'customPrintFrame';
-                    printFrame.style.display = 'none';
-                    document.body.appendChild(printFrame);
+                const mergedPdfFile = await mergedPdf.save();
+                const blobUrl = URL.createObjectURL(new Blob([mergedPdfFile], { type: 'application/pdf' }));
+
+                if(progressBar) progressBar.style.width = `100%`;
+                if(progressPercent) progressPercent.textContent = `100%`;
+                
+                let iframe = document.getElementById('printFrame');
+                if (!iframe) {
+                    iframe = document.createElement('iframe');
+                    iframe.id = 'printFrame';
+                    iframe.style.display = 'none';
+                    document.body.appendChild(iframe);
                 }
                 
                 const finishProcess = () => {
+                    updateUI();
                     setTimeout(() => {
-                        progressContainer.classList.add('hidden');
-                        progressBar.style.width = '0%';
-                        if (document.getElementById('autoClearCheckbox').checked) clearAllFiles();
-                        btn.disabled = false;
-                        btn.innerHTML = originalHtml;
+                        if(progressContainer) progressContainer.classList.add('hidden');
+                        if (document.getElementById('settingAutoClear') && document.getElementById('settingAutoClear').checked) clearAllFiles();
                     }, 2500);
                 };
 
                 const triggerPrint = () => {
                     try {
-                        printFrame.contentWindow.focus(); 
-                        printFrame.contentWindow.print();
+                        iframe.contentWindow.focus(); 
+                        iframe.contentWindow.print();
+                        showToast("يرجى اختيار الطابعة من النافذة المنبثقة ✔");
                         finishProcess();
                     } catch (err) {
                         const win = window.open(blobUrl, '_blank');
@@ -886,19 +1058,18 @@
                     }
                 };
 
-                printFrame.onload = () => setTimeout(triggerPrint, 1000); 
-                printFrame.src = blobUrl;
-                // Fallback in case onload doesn't fire for blobs in some browsers
+                iframe.onload = () => setTimeout(triggerPrint, 1000); 
+                iframe.src = blobUrl;
                 setTimeout(triggerPrint, 3000);
-
-            } catch (err) {
-                console.error(err);
-                alert('حدث خطأ أثناء دمج الفواتير المخصصة');
-                btn.disabled = false;
-                btn.innerHTML = originalHtml;
-                progressContainer.classList.add('hidden');
+                
+            } catch (error) {
+                console.error(error);
+                showToast("حدث خطأ أثناء معالجة الملفات", true);
+                printAllBtn.disabled = false;
+                updateUI();
             }
         });
+
 
     </script>
 </body>
