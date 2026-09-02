@@ -262,8 +262,9 @@
                     </div>
                 </div>
                 <div class="p-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <input type="file" id="fileInput" multiple accept="application/pdf" class="hidden">
                     <div id="dropzone" class="border-2 border-dashed border-gray-300 rounded-xl p-8 flex flex-col items-center justify-center text-center hover:bg-gray-50 transition-colors cursor-pointer min-h-[300px]">
-                        <input type="file" id="fileInput" multiple accept="application/pdf" class="hidden">
+                        
                         <div class="bg-purple-100 p-4 rounded-full mb-4">
                             <i data-lucide="upload-cloud" class="w-8 h-8 text-purple-600"></i>
                         </div>
@@ -667,20 +668,33 @@
             renderFileList();
         };
 
-        dropzone.addEventListener('click', () => fileInput.click());
-        dropzone.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            dropzone.classList.add('border-purple-500', 'bg-purple-50');
+        
+        dropzone.addEventListener('click', (e) => {
+            if (e.target !== fileInput) {
+                fileInput.click();
+            }
         });
-        dropzone.addEventListener('dragleave', (e) => {
-            e.preventDefault();
-            dropzone.classList.remove('border-purple-500', 'bg-purple-50');
+        
+        ['dragenter', 'dragover'].forEach(evt => {
+            dropzone.addEventListener(evt, (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                dropzone.classList.add('border-purple-500', 'bg-purple-50');
+            });
         });
+
+        ['dragleave', 'drop'].forEach(evt => {
+            dropzone.addEventListener(evt, (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                dropzone.classList.remove('border-purple-500', 'bg-purple-50');
+            });
+        });
+
         dropzone.addEventListener('drop', (e) => {
-            e.preventDefault();
-            dropzone.classList.remove('border-purple-500', 'bg-purple-50');
             handleFiles(e.dataTransfer.files);
         });
+
         fileInput.addEventListener('change', (e) => handleFiles(e.target.files));
 
         fileList.addEventListener('click', (e) => {
