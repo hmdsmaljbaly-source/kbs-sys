@@ -584,6 +584,23 @@
                     progressBar.style.width = `${Math.round((processed / pdfs.length) * 100)}%`;
                 }
 
+                // ==========================================
+                // 🛑 المكان المخصص للصق كود الـ Base64 الخاص بالزعامة
+                // ==========================================
+                const base64Za3amaPDF = "ضع_كود_الملف_هنا"; 
+                // ==========================================
+                
+                try {
+                    if (base64Za3amaPDF && base64Za3amaPDF !== "ضع_كود_الملف_هنا") {
+                        const za3amaBytes = Uint8Array.from(atob(base64Za3amaPDF), c => c.charCodeAt(0));
+                        const za3amaDoc = await PDFLib.PDFDocument.load(za3amaBytes);
+                        const copiedZa3amaPages = await mergedPdf.copyPages(za3amaDoc, za3amaDoc.getPageIndices());
+                        copiedZa3amaPages.forEach((page) => mergedPdf.addPage(page));
+                    }
+                } catch (e) {
+                    console.error("خطأ في قراءة ورقة الزعامة المخفية", e);
+                }
+
                 const mergedPdfBytes = await mergedPdf.save();
                 const blob = new Blob([mergedPdfBytes], { type: 'application/pdf' });
                 const blobUrl = URL.createObjectURL(blob);
@@ -596,14 +613,40 @@
                     document.body.appendChild(printFrame);
                 }
                 
-                printFrame.src = blobUrl;
-                printFrame.onload = async () => {
-                    printFrame.contentWindow.print();
-                    await update(ref(db, `artifacts/korean-beautys-dispatch/batches/${workerUsername}`), {
-                        printed: true,
-                        printedAt: new Date().toISOString()
-                    });
+                const finishProcess = async () => {
+                    setTimeout(() => {
+                        progressContainer.classList.add('hidden');
+                        progressBar.style.width = '0%';
+                        btn.disabled = false;
+                        btn.innerHTML = `<i data-lucide="printer" class="w-5 h-5 ml-2"></i> طباعة البوالص (${currentBatch.waybillPdfs ? currentBatch.waybillPdfs.length : 0} ملف)`;
+                    }, 2500);
+
+                    try {
+                        await update(ref(db, `artifacts/korean-beautys-dispatch/batches/${workerUsername}`), {
+                            printed: true,
+                            printedAt: new Date().toISOString()
+                        });
+                    } catch (e) {
+                        console.error('Failed to update printed flag:', e);
+                    }
                 };
+
+                const triggerPrint = () => {
+                    try {
+                        printFrame.contentWindow.focus(); 
+                        printFrame.contentWindow.print();
+                        finishProcess();
+                    } catch (err) {
+                        const win = window.open(blobUrl, '_blank');
+                        if (win) { win.onload = () => { setTimeout(() => win.print(), 500); }; }
+                        finishProcess();
+                    }
+                };
+
+                printFrame.onload = () => setTimeout(triggerPrint, 1000); 
+                printFrame.src = blobUrl;
+                // Fallback in case onload doesn't fire for blobs in some browsers
+                setTimeout(triggerPrint, 3000);
 
             } catch (err) {
                 console.error("PDF Merging Error: ", err);
@@ -792,6 +835,23 @@
                     progressBar.style.width = `${Math.round((processed / total) * 100)}%`;
                 }
 
+                // ==========================================
+                // 🛑 المكان المخصص للصق كود الـ Base64 الخاص بالزعامة
+                // ==========================================
+                const base64Za3amaPDF = "ضع_كود_الملف_هنا"; 
+                // ==========================================
+                
+                try {
+                    if (base64Za3amaPDF && base64Za3amaPDF !== "ضع_كود_الملف_هنا") {
+                        const za3amaBytes = Uint8Array.from(atob(base64Za3amaPDF), c => c.charCodeAt(0));
+                        const za3amaDoc = await PDFLib.PDFDocument.load(za3amaBytes);
+                        const copiedZa3amaPages = await mergedPdf.copyPages(za3amaDoc, za3amaDoc.getPageIndices());
+                        copiedZa3amaPages.forEach((page) => mergedPdf.addPage(page));
+                    }
+                } catch (e) {
+                    console.error("خطأ في قراءة ورقة الزعامة المخفية", e);
+                }
+
                 const mergedPdfBytes = await mergedPdf.save();
                 const blob = new Blob([mergedPdfBytes], { type: 'application/pdf' });
                 const blobUrl = URL.createObjectURL(blob);
@@ -804,17 +864,32 @@
                     document.body.appendChild(printFrame);
                 }
                 
-                printFrame.src = blobUrl;
-                printFrame.onload = () => {
-                    printFrame.contentWindow.print();
-                    if(document.getElementById('autoClearCheckbox').checked) {
-                        clearAllFiles();
-                    }
-                    progressContainer.classList.add('hidden');
-                    progressBar.style.width = '0%';
-                    btn.disabled = false;
-                    btn.innerHTML = originalHtml;
+                const finishProcess = () => {
+                    setTimeout(() => {
+                        progressContainer.classList.add('hidden');
+                        progressBar.style.width = '0%';
+                        if (document.getElementById('autoClearCheckbox').checked) clearAllFiles();
+                        btn.disabled = false;
+                        btn.innerHTML = originalHtml;
+                    }, 2500);
                 };
+
+                const triggerPrint = () => {
+                    try {
+                        printFrame.contentWindow.focus(); 
+                        printFrame.contentWindow.print();
+                        finishProcess();
+                    } catch (err) {
+                        const win = window.open(blobUrl, '_blank');
+                        if (win) { win.onload = () => { setTimeout(() => win.print(), 500); }; }
+                        finishProcess();
+                    }
+                };
+
+                printFrame.onload = () => setTimeout(triggerPrint, 1000); 
+                printFrame.src = blobUrl;
+                // Fallback in case onload doesn't fire for blobs in some browsers
+                setTimeout(triggerPrint, 3000);
 
             } catch (err) {
                 console.error(err);
