@@ -1,8 +1,17 @@
 // Web Audio API Service for KBS System
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+let activeOscillators = [];
 
 export const AudioService = {
-    playTone(frequency, type, duration, vol = 0.5) {
+    stopAllAudio() {
+        activeOscillators.forEach(osc => {
+            try { osc.stop(); } catch(e) {}
+            try { osc.disconnect(); } catch(e) {}
+        });
+        activeOscillators = [];
+    },
+
+    playTone(frequency, type, duration, vol = 0.5, endFreq = null, endVol = 0.01) {
         if (audioCtx.state === 'suspended') {
             audioCtx.resume();
         }
@@ -11,65 +20,76 @@ export const AudioService = {
 
         oscillator.type = type;
         oscillator.frequency.setValueAtTime(frequency, audioCtx.currentTime);
+        if (endFreq) {
+            oscillator.frequency.linearRampToValueAtTime(endFreq, audioCtx.currentTime + duration);
+        }
 
         gainNode.gain.setValueAtTime(vol, audioCtx.currentTime);
-        gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + duration);
+        gainNode.gain.exponentialRampToValueAtTime(endVol, audioCtx.currentTime + duration);
 
         oscillator.connect(gainNode);
         gainNode.connect(audioCtx.destination);
 
         oscillator.start();
         oscillator.stop(audioCtx.currentTime + duration);
+        
+        activeOscillators.push(oscillator);
+        setTimeout(() => {
+            activeOscillators = activeOscillators.filter(o => o !== oscillator);
+        }, duration * 1000);
+        return oscillator;
     },
 
     playSuccess() {
-        // High-pitch success beep
-        this.playTone(880, 'sine', 0.1, 0.5); // A5
-        setTimeout(() => this.playTone(1760, 'sine', 0.2, 0.5), 100); // A6
-    },
-
-    playError() {
-        // Harsh buzzer
-        this.playTone(150, 'sawtooth', 0.5, 0.8);
+        this.stopAllAudio();
+        // Play SUCCESS sine wave (800Hz)
+        this.playTone(800, 'sine', 0.2, 0.5);
+        if(navigator.vibrate) navigator.vibrate(200);
     },
 
     playDuplicate() {
-        // Warning tone (two quick mid-tones)
-        this.playTone(440, 'square', 0.15, 0.5);
-        setTimeout(() => this.playTone(440, 'square', 0.15, 0.5), 200);
+        this.stopAllAudio();
+        // Play dual triangle tone (500Hz -> 420Hz)
+        this.playTone(500, 'triangle', 0.3, 0.5, 420);
+        if(navigator.vibrate) navigator.vibrate(300);
     },
 
     playLeoBlocked() {
-        // Frequency-ramping siren
+        this.stopAllAudio();
+        // Play rapid sawtooth siren (600Hz <-> 1200Hz)
         if (audioCtx.state === 'suspended') {
             audioCtx.resume();
         }
         const oscillator = audioCtx.createOscillator();
         const gainNode = audioCtx.createGain();
 
-        oscillator.type = 'square';
-        oscillator.frequency.setValueAtTime(400, audioCtx.currentTime); // Start freq
-        oscillator.frequency.linearRampToValueAtTime(800, audioCtx.currentTime + 0.5); // Ramp up
-        oscillator.frequency.linearRampToValueAtTime(400, audioCtx.currentTime + 1.0); // Ramp down
+        oscillator.type = 'sawtooth';
+        oscillator.frequency.setValueAtTime(600, audioCtx.currentTime);
         
-        // Loop the siren a few times
-        for(let i=1; i<3; i++) {
-             oscillator.frequency.linearRampToValueAtTime(800, audioCtx.currentTime + 0.5 + i); 
-             oscillator.frequency.linearRampToValueAtTime(400, audioCtx.currentTime + 1.0 + i); 
+        // Loop the siren 3 times
+        for(let i=0; i<3; i++) {
+             oscillator.frequency.linearRampToValueAtTime(1200, audioCtx.currentTime + 0.15 + (i * 0.3)); 
+             oscillator.frequency.linearRampToValueAtTime(600, audioCtx.currentTime + 0.3 + (i * 0.3)); 
         }
 
         gainNode.gain.setValueAtTime(0.7, audioCtx.currentTime);
-        gainNode.gain.setValueAtTime(0, audioCtx.currentTime + 3.0);
+        gainNode.gain.setValueAtTime(0, audioCtx.currentTime + 0.9);
 
         oscillator.connect(gainNode);
         gainNode.connect(audioCtx.destination);
 
         oscillator.start();
-        oscillator.stop(audioCtx.currentTime + 3.0);
+        oscillator.stop(audioCtx.currentTime + 1.0);
         
-        // Try to vibrate if supported
-        if(navigator.vibrate) {
-            navigator.vibrate([500, 250, 500, 250, 500]);
-        }
+        activeOscillators.push(oscillator);
+
+        if(navigator.vibrate) navigator.vibrate([200, 100, 200, 100, 200]);
+    },
+
+    playError() {
+        this.stopAllAudio();
+        // Play square wave buzz (150Hz)
+        this.playTone(150, 'square', 0.6, 0.6);
+        if(navigator.vibrate) navigator.vibrate(600);
     }
 };

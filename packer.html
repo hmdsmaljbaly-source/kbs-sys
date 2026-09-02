@@ -7,8 +7,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="css/styles.css">
     <script src="https://unpkg.com/lucide@latest"></script>
-    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
-    <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+        <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
     <style>
         .nav-item.active {
@@ -107,6 +106,7 @@
     <div class="overlay overlay-success">
         <i data-lucide="check-circle" class="w-32 h-32 mb-4 text-white"></i>
         <h2>تم المسح بنجاح!</h2>
+        <p class="dynamic-text font-mono text-4xl mt-4 bg-white/20 px-6 py-2 rounded-xl"></p>
     </div>
     <div class="overlay overlay-duplicate">
         <i data-lucide="alert-triangle" class="w-32 h-32 mb-4 text-white"></i>
@@ -185,13 +185,23 @@
             </div>
 
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <!-- Scanner -->
+                <!-- Scanner Idle Card -->
                 <div class="bg-white rounded-xl shadow-sm border p-6 flex flex-col items-center justify-center min-h-[400px]">
                     <div class="text-center mb-6">
                         <h2 class="text-2xl font-bold text-gray-800">جاهز للإسكان</h2>
-                        <p class="text-gray-500 mt-2 text-sm">استخدم جهاز الباركود أو كاميرا الهاتف</p>
+                        <p class="text-gray-500 mt-2 text-sm">استخدم جهاز الباركود الخارجي مباشرة</p>
                     </div>
-                    <div id="reader" class="w-full max-w-sm overflow-hidden rounded-xl border-4 border-dashed border-gray-200 bg-gray-50"></div>
+                    <div class="w-full max-w-sm overflow-hidden rounded-xl border-4 border-dashed border-gray-200 bg-gray-50 flex flex-col items-center justify-center p-12 relative">
+                        <div class="relative mb-6">
+                            <i data-lucide="scan" class="w-24 h-24 text-gray-300"></i>
+                            <span class="absolute top-2 right-2 flex h-5 w-5">
+                              <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                              <span class="relative inline-flex rounded-full h-5 w-5 bg-green-500 shadow-lg shadow-green-500/50"></span>
+                            </span>
+                        </div>
+                        <p class="font-bold text-lg text-green-600 mb-1 flex items-center gap-2">قارئ الباركود متصل وجاهز</p>
+                        <p class="text-sm font-bold text-gray-400 text-center">في انتظار استقبال البيانات...</p>
+                    </div>
                 </div>
                 
                 <!-- Last Scanned -->
@@ -388,9 +398,9 @@
         });
 
         // 3. Scanner Logic
-        const handleScan = async (scannedText) => {
-            const trackingNumber = String(scannedText).trim();
-            if (!trackingNumber) return;
+                const handleScan = async (scannedText) => {
+            const cleanBarcode = String(scannedText).trim().toLowerCase();
+            if (!cleanBarcode) return;
 
             if (!currentBatch || !currentBatch.orders) {
                 ScannerEngine.triggerNotInBatch();
@@ -398,7 +408,8 @@
             }
 
             const orderIndex = currentBatch.orders.findIndex(o => 
-                String(o.trackingNumber) === trackingNumber || String(o.orderId) === trackingNumber
+                String(o.trackingNumber).trim().toLowerCase() === cleanBarcode || 
+                String(o.orderId).trim().toLowerCase() === cleanBarcode
             );
 
             if (orderIndex === -1) {
@@ -422,22 +433,26 @@
                 const now = new Date().toISOString();
                 const updates = {};
                 
+                // Update batch status
                 updates[`/artifacts/korean-beautys-dispatch/batches/${workerUsername}/orders/${orderIndex}/status`] = 'Shipped';
                 updates[`/artifacts/korean-beautys-dispatch/batches/${workerUsername}/orders/${orderIndex}/scanTime`] = now;
                 
+                // Update master order status
                 const orderKey = `WAYBILL_${matchedOrder.trackingNumber}`;
                 updates[`/artifacts/korean-beautys-dispatch/orders/${orderKey}/status`] = 'Shipped';
                 updates[`/artifacts/korean-beautys-dispatch/orders/${orderKey}/assignedWorker`] = workerUsername;
+                updates[`/artifacts/korean-beautys-dispatch/orders/${orderKey}/scannedBy`] = (currentUser.name || currentUser.username);
                 updates[`/artifacts/korean-beautys-dispatch/orders/${orderKey}/scanTime`] = now;
 
                 await update(ref(db), updates);
-                ScannerEngine.triggerSuccess();
+                ScannerEngine.triggerSuccess(matchedOrder.orderId || cleanBarcode);
 
                 let itemsHtml = '-';
                 if (Array.isArray(matchedOrder.items) && matchedOrder.items.length > 0) {
                     itemsHtml = matchedOrder.items.map(it => `
                         <div class="flex justify-between items-center py-2 border-b last:border-0">
                             <span class="font-bold text-gray-700">${it.name || '-'}</span>
+`;
                             <span class="bg-blue-100 text-blue-800 text-xs font-bold px-2 py-1 rounded">x ${it.qty || 1}</span>
                         </div>`).join('');
                 } else if (matchedOrder.products) {
@@ -478,8 +493,7 @@
         };
 
         ScannerEngine.initKeyboardScanner(handleScan);
-        ScannerEngine.initCameraScanner('reader', handleScan);
-
+        
         
         window.renderPendingOrders = function(query = '') {
             const container = document.getElementById('pendingOrdersContainer');
