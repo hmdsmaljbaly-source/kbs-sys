@@ -1,185 +1,148 @@
 // pdf-generator.js
-// Native HTML-to-PDF Print Stream Engine
+// jsPDF + AutoTable Engine for massive data
 
-window.downloadFilteredAuditPDF = function() {
+window.downloadFilteredAuditPDF = async function() {
     let rows = [];
     
     if (typeof window.currentFilteredReportsList !== 'undefined' && window.currentFilteredReportsList.length > 0) {
         rows = window.currentFilteredReportsList;
     } else {
-        // Fallback: extract from DOM
-        const trElements = document.querySelectorAll('#reportsTableBody tr:not(.empty-row), #ordersTableBody tr:not(.empty-row)');
-        trElements.forEach(tr => {
-            const cells = tr.querySelectorAll('td');
-            if (cells.length >= 6) {
-                rows.push({
-                    orderId: cells[0]?.innerText?.replace('#', '').trim() || '',
-                    trackingNumber: cells[1]?.innerText?.trim() || '',
-                    cod: cells[2]?.innerText?.trim() || 'N/A',
-                    products: cells[3]?.innerText?.trim() || '',
-                    notes: cells[4]?.querySelector('input')?.value || cells[4]?.innerText?.trim() || '—',
-                    status: cells[5]?.innerText?.trim() || 'Pending',
-                    assignedWorker: cells[6]?.innerText?.trim() || '-',
-                    scanTime: cells[7]?.innerText?.trim() || '-'
-                });
-            }
-        });
-    }
-
-    if (!rows || rows.length === 0) {
         alert("لا توجد بيانات مطابقة للفلتر لتحميلها في التقرير!");
         return;
     }
 
-    const printWindow = window.open('', '_blank');
-    if (!printWindow) {
-        alert("يرجى السماح بالنوافذ المنبثقة (Popups) من المتصفح لتحميل التقرير.");
-        return;
+    const btn = document.getElementById('btnExportAuditPdf');
+    let originalHtml = '';
+    if(btn) {
+        originalHtml = btn.innerHTML;
+        btn.innerHTML = `<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> جاري التحميل...`;
+        btn.disabled = true;
+        if(window.lucide) window.lucide.createIcons();
     }
 
-    const htmlContent = `
-        <!DOCTYPE html>
-        <html lang="ar" dir="rtl">
-        <head>
-            <meta charset="UTF-8">
-            <title>تقرير الجرد الداخلي</title>
-            <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;600;700;800&display=swap" rel="stylesheet">
-            <style>
-                @page { 
-                    size: A4 portrait; 
-                    margin: 8mm; 
-                }
-                body { 
-                    font-family: 'Tajawal', sans-serif; 
-                    font-size: 11px; 
-                    color: #000;
-                    margin: 0;
-                    padding: 0;
-                }
-                h2 { 
-                    text-align: center; 
-                    font-size: 18px; 
-                    margin-bottom: 15px; 
-                    border-bottom: 2px solid #000; 
-                    padding-bottom: 5px; 
-                }
-                table { 
-                    width: 100%; 
-                    border-collapse: collapse; 
-                    font-size: 10px;
-                }
-                th, td { 
-                    border: 1px solid #444; 
-                    padding: 5px; 
-                    text-align: right; 
-                }
-                th { 
-                    background-color: #f3f4f6; 
-                    font-weight: 700;
-                    -webkit-print-color-adjust: exact;
-                }
-                tr { 
-                    page-break-inside: avoid; 
-                }
-                .ltr { 
-                    direction: ltr; 
-                    text-align: left; 
-                }
-                .badge {
-                    display: inline-block;
-                    background: #eee;
-                    padding: 1px 4px;
-                    border-radius: 4px;
-                    font-size: 9px;
-                    font-weight: bold;
-                    margin-left: 4px;
-                }
-                .footer {
-                    text-align: center;
-                    font-size: 9px;
-                    margin-top: 15px;
-                    color: #555;
-                }
-            </style>
-        </head>
-        <body>
-            <h2>تقرير الجرد الداخلي - ${new Date().toLocaleDateString('en-GB')}</h2>
-            <table>
-                <thead>
-                    <tr>
-                        <th>#</th>
-                        <th>رقم الأوردر</th>
-                        <th class="ltr">رقم التتبع</th>
-                        <th class="ltr">المنتجات (Products)</th>
-                        <th>التحصيل (COD)</th>
-                        <th>الملاحظات</th>
-                        <th>المسؤول</th>
-                        <th>الوقت</th>
-                        <th>الحالة</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    ${rows.map((r, i) => {
-                        const isShipped = String(r.status).includes('شحن') || r.status === 'Shipped';
-                        let productsStr = '-';
-                        if (Array.isArray(r.items) && r.items.length > 0) {
-                            productsStr = r.items.map(it => '<div>' + (it.name || '-') + ' <span class="badge">x ' + (it.qty || 1) + '</span></div>').join('');
-                        } else if (r.products) {
-                            productsStr = String(r.products).replace(/\n/g, '<br>');
-                        }
+    // Allow UI to update
+    await new Promise(r => setTimeout(r, 100));
 
-                        // Safe date parsing
-                        let timeStr = '-';
-                        if (r.scanTime && r.scanTime !== '-') {
-                            const d = new Date(r.scanTime);
-                            if (!isNaN(d.getTime())) {
-                                timeStr = d.toLocaleString('en-GB', { 
-                                    day: '2-digit', month: '2-digit', year: 'numeric', 
-                                    hour: '2-digit', minute: '2-digit' 
-                                });
-                            } else {
-                                timeStr = r.scanTime; // Fallback to raw string
-                            }
-                        }
+    try {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF('p', 'pt', 'a4');
+        
+        // Add Cairo font for Arabic
+        // NOTE: In production you should bundle the font, but this works fine if it's cached.
+        doc.addFont('https://raw.githubusercontent.com/wsmariano/Cairo/master/Cairo-Regular.ttf', 'Cairo', 'normal');
+        doc.setFont('Cairo');
+        
+        doc.setFontSize(16);
+        doc.text("تقرير السجلات - KBS System", 40, 40);
+        
+        doc.setFontSize(10);
+        doc.text(`تاريخ التقرير: ${new Date().toLocaleDateString('en-GB')}`, 40, 60);
+        doc.text(`إجمالي الأوردرات: ${rows.length}`, 40, 75);
 
-                        // COD formatting
-                        let codStr = 'N/A';
-                        if (r.cod && r.cod !== 'N/A') {
-                            const num = parseFloat(String(r.cod).replace(/[^0-9.-]+/g,""));
-                            if (!isNaN(num)) {
-                                codStr = new Intl.NumberFormat('en-US').format(num) + ' ج.م';
-                            } else {
-                                codStr = String(r.cod).includes('ج') ? r.cod : r.cod + ' ج.م';
-                            }
-                        }
+        const tableData = rows.map((r, i) => {
+            const isShipped = String(r.status).includes('شحن') || r.status === 'Shipped';
+            
+            let productsStr = '-';
+            if (Array.isArray(r.items) && r.items.length > 0) {
+                productsStr = r.items.map(it => `${it.name || '-'} (x${it.qty || 1})`).join('\n');
+            } else if (r.parsedProducts && r.parsedProducts.length > 0) {
+                productsStr = r.parsedProducts.map(p => `${p.name} (العدد: ${p.quantity})`).join('\n');
+            } else if (r.products) {
+                productsStr = String(r.products);
+            } else if (r.recordType === 'return') {
+                productsStr = 'طلب مرتجع';
+            }
 
-                        return '<tr>' +
-                            '<td style="text-align: center;">' + (i + 1) + '</td>' +
-                            '<td style="font-weight: 700;">#' + (r.orderId || r.id || '-') + '</td>' +
-                            '<td class="ltr" style="font-family: monospace;">' + (r.trackingNumber || r.tracking || '-') + '</td>' +
-                            '<td class="ltr">' + productsStr + '</td>' +
-                            '<td style="font-weight: bold; color: #b91c1c;">' + codStr + '</td>' +
-                            '<td>' + (r.notes || '—') + '</td>' +
-                            '<td>' + (r.assignedWorker || r.worker || r.scannedBy || '-') + '</td>' +
-                            '<td dir="ltr" style="font-size: 9px;">' + timeStr + '</td>' +
-                            '<td style="font-weight: bold;">' + (isShipped ? 'تم الشحن' : 'قيد الانتظار') + '</td>' +
-                        '</tr>';
-                    }).join('')}
-                </tbody>
-            </table>
-            <div class="footer">تم إنشاء التقرير بواسطة نظام KBS</div>
-            <script>
-                window.onload = function() {
-                    window.print();
-                    // Close the window after printing (or if cancelled)
-                    setTimeout(() => window.close(), 500);
-                };
-            </script>
-        </body>
-        </html>
-    `;
+            let timeStr = '-';
+            if (r.scanTime && r.scanTime !== '-') {
+                const d = new Date(r.scanTime);
+                if (!isNaN(d.getTime())) {
+                    timeStr = d.toLocaleString('en-GB', { 
+                        day: '2-digit', month: '2-digit', year: 'numeric', 
+                        hour: '2-digit', minute: '2-digit' 
+                    });
+                } else {
+                    timeStr = r.scanTime;
+                }
+            }
 
-    printWindow.document.open();
-    printWindow.document.write(htmlContent);
-    printWindow.document.close();
+            let codStr = 'N/A';
+            if (r.cod && r.cod !== 'N/A' && r.recordType !== 'return') {
+                const num = parseFloat(String(r.cod).replace(/[^0-9.-]+/g,""));
+                if (!isNaN(num)) {
+                    codStr = new Intl.NumberFormat('en-US').format(num) + ' ج.م';
+                } else {
+                    codStr = String(r.cod).includes('ج') ? r.cod : r.cod + ' ج.م';
+                }
+            }
+
+            let statusLabel = r.status;
+            if(r.recordType === 'return') {
+                statusLabel = r.status === 'Received' ? 'مرتجع مستلم' : 'مرتجع معلق';
+            } else if (isShipped) {
+                statusLabel = 'تم الشحن';
+            } else {
+                statusLabel = 'قيد الانتظار';
+            }
+
+            return [
+                i + 1,
+                r.orderId || r.id || '-',
+                r.trackingNumber || r.tracking || '-',
+                codStr,
+                productsStr,
+                r.notes || '—',
+                r.assignedName || r.assignedWorker || r.worker || r.scannedByUsername || r.scannedBy || '-',
+                timeStr,
+                statusLabel
+            ];
+        });
+
+        doc.autoTable({
+            startY: 90,
+            head: [['#', 'رقم الأوردر', 'رقم التتبع', 'التحصيل', 'المنتجات', 'الملاحظات', 'المسؤول', 'الوقت', 'الحالة']],
+            body: tableData,
+            theme: 'grid',
+            styles: { 
+                font: 'Cairo', 
+                fontSize: 8,
+                halign: 'right', // Right align for Arabic
+                valign: 'middle',
+                cellPadding: 4
+            },
+            headStyles: { 
+                fillColor: [79, 70, 229], // Indigo 600
+                textColor: 255,
+                fontStyle: 'bold',
+                halign: 'center'
+            },
+            columnStyles: {
+                0: { halign: 'center', cellWidth: 20 },
+                1: { halign: 'center' },
+                2: { halign: 'center' },
+                3: { halign: 'center' },
+                4: { cellWidth: 150 }, // Give products more space
+            },
+            didDrawPage: function (data) {
+                // Footer
+                let str = "Page " + doc.internal.getNumberOfPages();
+                doc.setFontSize(8);
+                let pageSize = doc.internal.pageSize;
+                let pageHeight = pageSize.height ? pageSize.height : pageSize.getHeight();
+                doc.text(str, data.settings.margin.left, pageHeight - 10);
+            }
+        });
+
+        doc.save(`Audit_Report_${new Date().toISOString().split('T')[0]}.pdf`);
+
+    } catch (err) {
+        console.error("PDF Generation Error:", err);
+        alert("حدث خطأ أثناء استخراج ملف الـ PDF. يرجى المحاولة مرة أخرى.");
+    } finally {
+        if(btn) {
+            btn.innerHTML = originalHtml;
+            btn.disabled = false;
+            if(window.lucide) window.lucide.createIcons();
+        }
+    }
 };

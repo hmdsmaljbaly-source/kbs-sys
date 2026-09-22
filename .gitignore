@@ -1,0 +1,33 @@
+# Dependencies
+/node_modules
+/.pnpm-store
+
+# Next.js build output
+/.next/
+/out/
+
+# Firebase
+/.firebase/
+firebase_dump.json
+
+# Scratch scripts & temporary test files
+/*.script*.js
+/*.png
+/extract.js
+/fix_packer.js
+/temp.js
+/test*.js
+/dummy.pdf
+
+# Production build artifacts
+build
+dist
+
+# Environment variables
+.env*.local
+.env
+
+# IDE / OS
+.DS_Store
+Thumbs.db
+*.log

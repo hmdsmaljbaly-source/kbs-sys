@@ -99,22 +99,38 @@ export const BulkEngine = {
      * @param {Array} aggregatedList 
      * @param {string} filename 
      */
-    exportToExcel(aggregatedList, filename = 'Bulk_Pick_List.xlsx') {
-        if (!window.XLSX) {
-            console.error("XLSX library not loaded");
-            return;
+    async exportToExcel(aggregatedList, filename = 'Bulk_Pick_List.xlsx') {
+        try {
+            const workbook = new window.ExcelJS.Workbook();
+            const worksheet = workbook.addWorksheet('Pick List');
+            
+            worksheet.columns = [
+                { header: 'اسم المنتج', key: 'name', width: 40 },
+                { header: 'الكمية', key: 'qty', width: 15 },
+                { header: 'ملاحظات', key: 'condition', width: 30 }
+            ];
+
+            aggregatedList.forEach(item => {
+                worksheet.addRow({
+                    name: item.name,
+                    qty: item.quantity,
+                    condition: item.condition
+                });
+            });
+
+            worksheet.eachRow((row, rowNumber) => {
+                row.eachCell((cell) => {
+                    cell.alignment = { vertical: 'middle', horizontal: 'right', wrapText: true };
+                });
+                if (rowNumber === 1) row.font = { bold: true };
+            });
+
+            const buffer = await workbook.xlsx.writeBuffer();
+            saveAs(new Blob([buffer]), filename);
+        } catch (err) {
+            console.error("BulkEngine Excel Export Error:", err);
+            alert("حدث خطأ أثناء التصدير.");
         }
-        
-        const worksheetData = aggregatedList.map(item => ({
-            "اسم المنتج": item.name,
-            "الكمية": item.quantity,
-            "ملاحظات": item.condition
-        }));
-        
-        const worksheet = window.XLSX.utils.json_to_sheet(worksheetData);
-        const workbook = window.XLSX.utils.book_new();
-        window.XLSX.utils.book_append_sheet(workbook, worksheet, "Pick List");
-        window.XLSX.writeFile(workbook, filename);
     },
 
     /**
@@ -135,9 +151,11 @@ export const BulkEngine = {
             format: 'a4'
         });
         
-        // Optional: add custom font here for Arabic support
-        doc.setFont("helvetica", "bold");
-        doc.text("KBS Bulk Pick List", 105, 15, { align: 'center' });
+        doc.addFont('https://raw.githubusercontent.com/wsmariano/Cairo/master/Cairo-Regular.ttf', 'Cairo', 'normal');
+        doc.setFont('Cairo');
+        
+        doc.setFontSize(16);
+        doc.text("KBS Bulk Pick List (التجميع المجمع)", 105, 15, { align: 'center' });
         
         const tableBody = aggregatedList.map(item => [
             item.name,
@@ -146,12 +164,24 @@ export const BulkEngine = {
         ]);
         
         doc.autoTable({
-            head: [['Product Name', 'Quantity', 'Notes']],
+            head: [['اسم المنتج', 'الكمية', 'ملاحظات']],
             body: tableBody,
             startY: 25,
             theme: 'grid',
-            headStyles: { fillColor: [30, 58, 138] }, // Tailwind blue-900
-            styles: { font: 'helvetica' }
+            styles: { 
+                font: 'Cairo',
+                halign: 'right'
+            },
+            headStyles: { 
+                fillColor: [30, 58, 138],
+                fontStyle: 'bold',
+                halign: 'center'
+            },
+            columnStyles: {
+                0: { cellWidth: 100 },
+                1: { halign: 'center' },
+                2: { halign: 'center' }
+            }
         });
         
         doc.save(filename);

@@ -13,12 +13,23 @@ export const ScannerEngine = {
         this.onScanCallback = callback;
         
         window.addEventListener('keydown', (e) => {
+            // Block DevTools shortcuts (F12, Ctrl+Shift+I, Ctrl+Shift+J, Ctrl+U) to prevent scanner weirdness
+            if (e.key === 'F12' || 
+               (e.ctrlKey && e.shiftKey && (e.key === 'I' || e.key === 'i' || e.key === 'J' || e.key === 'j')) || 
+               (e.ctrlKey && (e.key === 'U' || e.key === 'u'))) {
+                e.preventDefault();
+                return;
+            }
+
             // Ignore if typing in a text field that is NOT readonly
             if (e.target.tagName === 'INPUT' && e.target.type !== 'hidden' && !e.target.readOnly) return;
             if (e.target.tagName === 'TEXTAREA') return;
 
             // Trap non-character keys
-            if (e.key.length > 1 && e.key !== 'Enter') return;
+            if (e.key.length > 1 && e.key !== 'Enter') {
+                if(e.key.startsWith('F')) e.preventDefault(); // Block F1-F11 from scanners
+                return;
+            }
 
             const currentTime = new Date().getTime();
             
@@ -97,6 +108,12 @@ export const ScannerEngine = {
     triggerLeoBlocked() {
         AudioService.playLeoBlocked();
         this.showOverlay('overlay-leo');
+    },
+
+    triggerCancelled() {
+        // Use LEO sound as requested
+        AudioService.playLeoBlocked();
+        this.showOverlay('overlay-cancelled');
     },
 
     triggerNotInBatch() {
