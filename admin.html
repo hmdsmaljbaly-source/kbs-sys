@@ -14,20 +14,20 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
     <style>
-        body { background-color: #09090b; color: #f4f4f5; font-family: 'Tajawal', sans-serif; }
+        body { background-color: #f8fafc; color: #0f172a; font-family: 'Tajawal', sans-serif; }
         .nav-item {
-            color: #a1a1aa;
+            color: #64748b;
             border-radius: 1rem;
             transition: all 0.2s ease;
         }
         .nav-item:hover {
-            color: #ffffff;
-            background-color: rgba(39, 39, 42, 0.7);
+            color: #0f172a;
+            background-color: #f1f5f9;
         }
         .nav-item.active {
-            background-color: #2563eb !important; /* HeroUI Blue */
+            background-color: #2563eb !important; /* HeroUI Primary Blue */
             color: #ffffff !important;
-            box-shadow: 0 10px 25px -5px rgba(37, 99, 235, 0.4);
+            box-shadow: 0 10px 25px -5px rgba(37, 99, 235, 0.35);
         }
         .view-section {
             display: none;
@@ -37,13 +37,13 @@
             display: block;
         }
         @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
+            from { opacity: 0; transform: translateY(8px); }
             to { opacity: 1; transform: translateY(0); }
         }
-        /* HeroUI Custom Scrollbar */
+        /* Custom Scrollbar */
         ::-webkit-scrollbar { width: 6px; height: 6px; }
-        ::-webkit-scrollbar-track { background: #09090b; }
-        ::-webkit-scrollbar-thumb { background: #27272a; border-radius: 9999px; }
+        ::-webkit-scrollbar-track { background: #f8fafc; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 9999px; }
     </style>
 
     <!-- Robust View Switcher -->
@@ -123,20 +123,20 @@
     <!-- Custom PDF Generator Script -->
     <script src="js/pdf-generator.js"></script>
 </head>
-<body class="bg-[#09090b] text-zinc-100 min-h-screen flex selection:bg-blue-500 selection:text-white">
+<body class="bg-slate-50 text-slate-800 min-h-screen flex selection:bg-blue-500 selection:text-white">
 
     <!-- Toast Notification -->
-    <div id="toast" class="fixed bottom-5 right-5 bg-green-600 text-white px-6 py-3 rounded-xl shadow-2xl font-bold transform transition-transform translate-y-20 opacity-0 z-50"></div>
+    <div id="toast" class="fixed bottom-5 right-5 bg-emerald-600 text-white px-6 py-3 rounded-2xl shadow-xl font-bold transform transition-all translate-y-20 opacity-0 z-50"></div>
 
     <!-- Sidebar -->
-    <aside class="w-64 bg-zinc-900/80 backdrop-blur-xl border-l border-zinc-800/80 h-screen sticky top-0 flex flex-col z-20">
-        <div class="p-6 border-b border-zinc-800/80 flex items-center gap-3">
-            <div class="bg-blue-500/10 p-2.5 rounded-2xl text-blue-400 border border-blue-500/20">
+    <aside class="w-64 bg-white border-l border-slate-200/80 shadow-sm h-screen sticky top-0 flex flex-col z-20">
+        <div class="p-6 border-b border-slate-100 flex items-center gap-3">
+            <div class="bg-blue-50 p-2.5 rounded-2xl text-blue-600 border border-blue-100 shadow-sm">
                 <i data-lucide="shield" class="w-6 h-6"></i>
             </div>
             <div>
-                <h1 class="font-bold text-lg text-white">Admin Panel</h1>
-                <p id="userNameDisplay" class="text-xs text-zinc-400 font-medium"></p>
+                <h1 class="font-bold text-lg text-slate-900 tracking-wide">Admin Panel</h1>
+                <p id="userNameDisplay" class="text-xs text-slate-500 font-medium"></p>
             </div>
         </div>
 
@@ -163,8 +163,8 @@
             </button>
         </nav>
 
-        <div class="p-4 border-t border-zinc-800/80">
-            <button id="logoutBtn" class="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-2xl text-rose-400 hover:bg-rose-500/10 border border-rose-500/20 transition">
+        <div class="p-4 border-t border-slate-100">
+            <button id="logoutBtn" class="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-2xl text-rose-600 hover:bg-rose-50 border border-rose-100 transition font-bold">
                 <i data-lucide="log-out" class="w-5 h-5"></i>
                 <span class="font-medium">تسجيل الخروج</span>
             </button>
@@ -178,29 +178,29 @@
         <section id="view-orders" class="view-section active">
             <div class="flex flex-col xl:flex-row items-start xl:items-center justify-between gap-4 mb-6">
                 <div>
-                    <h2 class="text-2xl font-bold text-white flex items-center gap-2.5">
-                        <i data-lucide="shopping-bag" class="text-blue-500 w-6 h-6"></i> إدارة الأوردرات
+                    <h2 class="text-2xl font-bold text-slate-900 flex items-center gap-2.5">
+                        <i data-lucide="shopping-bag" class="text-blue-600 w-6 h-6"></i> إدارة الأوردرات
                     </h2>
-                    <p class="text-zinc-400 text-sm mt-1">التحكم الكامل ببيانات الطرود وتفعيل علامة الحظر (LEO)</p>
+                    <p class="text-slate-500 text-sm mt-1">التحكم الكامل ببيانات الطرود وتفعيل علامة الحظر (LEO)</p>
                 </div>
                 
                 <!-- Action Toolbar -->
                 <div class="flex gap-2 flex-wrap">
-                    <button onclick="document.getElementById('manualOrderModal').classList.remove('hidden')" class="bg-blue-600 text-white px-4 py-2.5 text-sm rounded-2xl hover:bg-blue-500 transition font-bold shadow-lg shadow-blue-600/30 flex items-center gap-2">
+                    <button onclick="document.getElementById('manualOrderModal').classList.remove('hidden')" class="bg-blue-600 text-white px-4 py-2.5 text-sm rounded-2xl hover:bg-blue-700 transition font-bold shadow-md shadow-blue-500/20 flex items-center gap-2">
                         <i data-lucide="plus" class="w-4 h-4"></i> إضافة أوردر يدوي
                     </button>
-                    <div class="flex rounded-2xl border border-zinc-800 bg-zinc-900 overflow-hidden shadow-sm">
-                        <button id="btnExportManifestPdf" class="bg-rose-600 text-white px-3 py-2.5 text-sm hover:bg-rose-700 font-bold flex items-center gap-1 border-r border-zinc-800" title="تحميل مانيفست (PDF)">
+                    <div class="flex rounded-2xl border border-slate-200 bg-white overflow-hidden shadow-sm">
+                        <button id="btnExportManifestPdf" class="bg-rose-600 text-white px-3.5 py-2.5 text-sm hover:bg-rose-700 font-bold flex items-center gap-1 border-r border-slate-200" title="تحميل مانيفست (PDF)">
                             <i data-lucide="truck" class="w-4 h-4"></i>
                         </button>
-                        <button id="btnPrintManifest" class="bg-zinc-800 text-zinc-100 px-4 py-2.5 text-sm hover:bg-zinc-700 font-bold flex items-center gap-2" title="طباعة مانيفست تسليم المندوب">
+                        <button id="btnPrintManifest" class="bg-slate-800 text-white px-4 py-2.5 text-sm hover:bg-slate-900 font-bold flex items-center gap-2" title="طباعة مانيفست تسليم المندوب">
                             <i data-lucide="printer" class="w-4 h-4"></i> مانيفست المندوب
                         </button>
                     </div>
-                    <button onclick="closeDayAction()" class="bg-amber-500/10 text-amber-400 px-4 py-2.5 text-sm rounded-2xl hover:bg-amber-500/20 border border-amber-500/20 transition font-bold flex items-center gap-2">
+                    <button onclick="closeDayAction()" class="bg-amber-50 text-amber-700 px-4 py-2.5 text-sm rounded-2xl hover:bg-amber-100 border border-amber-200 transition font-bold flex items-center gap-2">
                         <i data-lucide="archive" class="w-4 h-4"></i> تقفيل اليوم
                     </button>
-                    <button onclick="clearOperationalView()" class="bg-rose-500/10 text-rose-400 px-4 py-2.5 text-sm rounded-2xl hover:bg-rose-500/20 border border-rose-500/20 transition font-bold flex items-center gap-2">
+                    <button onclick="clearOperationalView()" class="bg-rose-50 text-rose-700 px-4 py-2.5 text-sm rounded-2xl hover:bg-rose-100 border border-rose-200 transition font-bold flex items-center gap-2">
                         <i data-lucide="trash-2" class="w-4 h-4"></i> تصفير بالكامل
                     </button>
                 </div>
@@ -217,31 +217,31 @@
             </div>
 
             <!-- Filter Toolbar -->
-            <div class="flex flex-wrap items-center gap-3 w-full mb-4 bg-zinc-900/90 p-3.5 rounded-2xl border border-zinc-800/90 shadow-lg">
-                <select id="filter-status" class="py-2.5 px-4 border border-zinc-800 rounded-xl text-sm font-bold text-zinc-200 bg-zinc-950 hover:bg-zinc-900 focus:outline-none focus:border-blue-500 transition-all">
+            <div class="flex flex-wrap items-center gap-3 w-full mb-4 bg-white p-3.5 rounded-2xl border border-slate-200/80 shadow-sm">
+                <select id="filter-status" class="py-2.5 px-4 border border-slate-200 rounded-xl text-sm font-bold text-slate-700 bg-slate-50 hover:bg-white focus:outline-none focus:border-blue-600 transition-all">
                     <option value="all">الكل (All Statuses)</option>
                     <option value="Shipped">تم الشحن (Shipped)</option>
                     <option value="Pending">قيد الانتظار (Pending)</option>
                 </select>
-                <select id="filter-leo" class="py-2.5 px-4 border border-zinc-800 rounded-xl text-sm font-bold text-zinc-200 bg-zinc-950 hover:bg-zinc-900 focus:outline-none focus:border-blue-500 transition-all">
+                <select id="filter-leo" class="py-2.5 px-4 border border-slate-200 rounded-xl text-sm font-bold text-slate-700 bg-slate-50 hover:bg-white focus:outline-none focus:border-blue-600 transition-all">
                     <option value="all">الكل (All LEO)</option>
                     <option value="leo_active">حظر LEO (Active)</option>
                     <option value="leo_normal">عادي (Normal)</option>
                 </select>
-                <select id="filter-worker" class="py-2.5 px-4 border border-zinc-800 rounded-xl text-sm font-bold text-zinc-200 bg-zinc-950 hover:bg-zinc-900 focus:outline-none focus:border-blue-500 transition-all">
+                <select id="filter-worker" class="py-2.5 px-4 border border-slate-200 rounded-xl text-sm font-bold text-slate-700 bg-slate-50 hover:bg-white focus:outline-none focus:border-blue-600 transition-all">
                     <option value="all">كافة العمال (All Workers)</option>
                     <option value="unassigned">غير معين (-)</option>
                 </select>
                 <div class="relative flex-1 sm:w-72">
-                    <input type="text" id="searchOrders" placeholder="ابحث برقم الأوردر، التتبع، المنتجات، العامل..." class="w-full pl-3 pr-10 py-2.5 bg-zinc-950 border border-zinc-800 text-white placeholder-zinc-500 rounded-xl text-sm focus:outline-none focus:border-blue-500 transition-all">
-                    <i data-lucide="search" class="w-4 h-4 text-zinc-400 absolute right-3.5 top-3.5"></i>
+                    <input type="text" id="searchOrders" placeholder="ابحث برقم الأوردر، التتبع، المنتجات، العامل..." class="w-full pl-3 pr-10 py-2.5 bg-slate-50 border border-slate-200 text-slate-800 placeholder-slate-400 rounded-xl text-sm focus:outline-none focus:border-blue-600 focus:bg-white transition-all">
+                    <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute right-3.5 top-3.5"></i>
                 </div>
             </div>
 
-            <div class="bg-zinc-900/90 rounded-2xl shadow-xl border border-zinc-800/90 overflow-hidden">
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200/80 overflow-hidden">
                 <div class="overflow-x-auto min-h-[60vh]">
                     <table class="w-full text-right text-sm">
-                        <thead class="bg-zinc-950/80 text-zinc-400 border-b border-zinc-800 sticky top-0 backdrop-blur z-10">
+                        <thead class="bg-slate-50 text-slate-500 border-b border-slate-200 sticky top-0 backdrop-blur z-10">
                             <tr>
                                 <th class="p-4 font-bold">رقم الأوردر</th>
                                 <th class="p-4 font-bold">رقم التتبع</th>
@@ -701,33 +701,33 @@
             const kpiContainer = document.getElementById('topKpisContainer');
             if (kpiContainer) {
                 kpiContainer.innerHTML = `
-                    <div class="bg-white p-4 rounded-xl border shadow-sm flex items-center justify-between">
+                    <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm flex items-center justify-between hover:shadow-md transition">
                         <div>
-                            <p class="text-sm text-gray-500 font-bold mb-1">إجمالي أوردرات اليوم</p>
-                            <h3 class="text-2xl font-black text-gray-800">${total}</h3>
+                            <p class="text-xs text-slate-500 font-bold mb-1">إجمالي أوردرات اليوم</p>
+                            <h3 class="text-3xl font-black text-slate-900">${total}</h3>
                         </div>
-                        <div class="p-3 bg-blue-50 text-blue-600 rounded-lg"><i data-lucide="package" class="w-6 h-6"></i></div>
+                        <div class="p-3.5 bg-blue-50 text-blue-600 rounded-2xl border border-blue-100"><i data-lucide="package" class="w-6 h-6"></i></div>
                     </div>
-                    <div class="bg-white p-4 rounded-xl border shadow-sm flex items-center justify-between">
+                    <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm flex items-center justify-between hover:shadow-md transition">
                         <div>
-                            <p class="text-sm text-gray-500 font-bold mb-1">تم شحنها بنجاح</p>
-                            <h3 class="text-2xl font-black text-green-600">${shipped}</h3>
+                            <p class="text-xs text-slate-500 font-bold mb-1">تم شحنها بنجاح</p>
+                            <h3 class="text-3xl font-black text-emerald-600">${shipped}</h3>
                         </div>
-                        <div class="p-3 bg-green-50 text-green-600 rounded-lg"><i data-lucide="check-circle" class="w-6 h-6"></i></div>
+                        <div class="p-3.5 bg-emerald-50 text-emerald-600 rounded-2xl border border-emerald-100"><i data-lucide="check-circle" class="w-6 h-6"></i></div>
                     </div>
-                    <div class="bg-white p-4 rounded-xl border shadow-sm flex items-center justify-between">
+                    <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm flex items-center justify-between hover:shadow-md transition">
                         <div>
-                            <p class="text-sm text-gray-500 font-bold mb-1">متبقي قيد الانتظار</p>
-                            <h3 class="text-2xl font-black text-amber-500">${pending}</h3>
+                            <p class="text-xs text-slate-500 font-bold mb-1">متبقي قيد الانتظار</p>
+                            <h3 class="text-3xl font-black text-amber-500">${pending}</h3>
                         </div>
-                        <div class="p-3 bg-amber-50 text-amber-500 rounded-lg"><i data-lucide="clock" class="w-6 h-6"></i></div>
+                        <div class="p-3.5 bg-amber-50 text-amber-600 rounded-2xl border border-amber-100"><i data-lucide="clock" class="w-6 h-6"></i></div>
                     </div>
-                    <div class="bg-white p-4 rounded-xl border shadow-sm flex items-center justify-between">
+                    <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm flex items-center justify-between hover:shadow-md transition">
                         <div>
-                            <p class="text-sm text-gray-500 font-bold mb-1">إجمالي التحصيل (شُحن)</p>
-                            <h3 class="text-2xl font-black text-red-600" dir="ltr">${codSum.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})} ج</h3>
+                            <p class="text-xs text-slate-500 font-bold mb-1">إجمالي التحصيل (شُحن)</p>
+                            <h3 class="text-3xl font-black text-rose-600" dir="ltr">${codSum.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})} ج</h3>
                         </div>
-                        <div class="p-3 bg-red-50 text-red-600 rounded-lg"><i data-lucide="dollar-sign" class="w-6 h-6"></i></div>
+                        <div class="p-3.5 bg-rose-50 text-rose-600 rounded-2xl border border-rose-100"><i data-lucide="dollar-sign" class="w-6 h-6"></i></div>
                     </div>
                 `;
             }
